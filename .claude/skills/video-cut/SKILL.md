@@ -7,6 +7,11 @@ description: STEP 2~3 받아쓰기와 컷 편집. 영상을 단어별 시각까�
 
 먼저 `workflow/rules/편집규칙.md` 를 읽는다.
 
+## 0. 영상 경로를 받았을 때 (실행 버튼으로 시작한 경우)
+인자로 영상 파일 경로가 오면 묻지 말고 바로 시작한다.
+1. `projects/YYYY-MM-DD_파일이름/{raw,work,out}` 폴더를 만들고 영상을 `raw/` 로 **복사**한다 (원본은 그대로 둠).
+2. 사용자는 컴퓨터 초보다. 진행 상황은 한두 줄로 쉽게 알리고, 끝나면 결과 영상 위치(`projects/.../work/cut.mp4`)를 알려 "두 번 눌러서 직접 보세요"라고 안내한다.
+
 ## STEP 2 받아쓰기
 ```bash
 python workflow/scripts/transcribe.py projects/<P>/raw/<원본>.mp4 -o projects/<P>/work/transcript.json --prompt "<고유명사들>"
