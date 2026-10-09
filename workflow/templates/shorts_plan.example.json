@@ -1,0 +1,9 @@
+{
+  "shorts": [
+    {"name": "short1_받아쓰기", "title": "편집의 시작은 받아쓰기", "from": 3, "to": 12},
+    {"name": "short2_컷편집", "title": "정적은 0.05초만", "from": 13, "to": 24},
+    {"name": "short3_꾸미기", "title": "글은 하나씩 띄우세요", "from": 25, "to": 38},
+    {"name": "short4_발행", "title": "4개 채널 한 번에 예약", "from": 39, "to": 52}
+  ],
+  "_설명": "from/to 는 'shorts.py list' 에 나온 문장 번호. 한 편 = 정보 하나, 30~45초."
+}
