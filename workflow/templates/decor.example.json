@@ -1,0 +1,28 @@
+{
+  "title": {
+    "line1": "○○하시는 사장님들께",
+    "line2": "영상 하나로 채널 4개",
+    "highlight": ["채널 4개"],
+    "color": "#FFD400"
+  },
+  "captions": {"enabled": true, "min_words": 2, "max_words": 4, "max_chars": 14},
+  "pops": [
+    {"at": "첫 번째", "type": "badge", "text": "1"},
+    {"at": "받아쓰기", "type": "chip", "text": "받아쓰기"},
+    {"at": "이 영상 받아쓰기", "type": "terminal", "text": "이 영상 받아쓰기 해줘"},
+    {"at": "두 번째", "type": "badge", "text": "2"},
+    {"at": "컷 편집", "type": "chip", "text": "컷 편집"},
+    {"at": "인스타", "type": "logo", "image": "workflow/assets/logos/instagram.png"},
+    {"at": "제일 중요", "type": "stamp", "text": "중요!"}
+  ],
+  "zoom": [
+    {"at": "두 번째", "scale": 1.10}
+  ],
+  "_설명": {
+    "at": "영상에서 말하는 단어(받아쓰기에 적힌 그대로) 또는 초(숫자). 앞 효과 다음에 처음 나오는 곳에 맞춰 뜸",
+    "type": "badge=번호 배지, chip=키워드 칩, stamp=빨간 도장, terminal=검은 터미널 타이핑, logo=로고 그림",
+    "duration": "표시 시간(초)을 바꾸고 싶을 때 각 항목에 \"duration\": 3 처럼 추가",
+    "offset": "말보다 조금 늦게/빠르게 띄우려면 \"offset\": 0.2 (초)",
+    "zoom": "주제가 바뀌는 말에 살짝 확대 (scale 1.05~1.15)"
+  }
+}

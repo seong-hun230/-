@@ -1,0 +1,50 @@
+{
+  "name": "2026-10-10 영상 하나로 4개 채널",
+  "timezone": "Asia/Seoul",
+  "posts": [
+    {
+      "label": "인스타 릴스",
+      "platform": "instagram",
+      "account": "@내인스타아이디",
+      "when": "2026-10-10 19:23",
+      "video": "final.mp4",
+      "cover": "thumbs/2_숫자형.jpg",
+      "caption_file": "caption_reels.txt",
+      "hashtags": ["클로드코드", "릴스", "숏폼", "마케팅", "자동화"],
+      "music": {"audioId": "zernio.py audio 로 찾은 번호", "title": "곡 이름(확인용)", "volume": 10},
+      "automation": {
+        "keywords": ["워크플로우"],
+        "dm": "댓글 감사합니다! 말씀드린 자료 링크 보내드려요 👇",
+        "button": {"title": "자료 받기", "url": "https://자료링크"},
+        "reply": "DM으로 보내드렸어요",
+        "followersOnly": true,
+        "notFollowingMessage": "팔로우해 주시면 더 많은 정보 드릴게요! 팔로우 후 아래 버튼을 눌러 주세요.",
+        "buttonLabel": "팔로우했어요",
+        "alsoMatchInDms": true
+      }
+    },
+    {
+      "label": "유튜브 쇼츠",
+      "platform": "youtube",
+      "account": "내유튜브채널",
+      "when": "2026-10-10 19:31",
+      "video": "final_yt.mp4",
+      "title": "검색되는 한 줄 제목 #shorts",
+      "description_file": "youtube_description.txt",
+      "firstComment": "자료 링크: https://자료링크",
+      "visibility": "public"
+    },
+    {
+      "label": "쓰레드",
+      "platform": "threads",
+      "account": "내쓰레드아이디",
+      "when": "2026-10-10 20:47",
+      "threadItems": [
+        {"content": "1번 글 (누구에게)", "images": ["card1.jpg"]},
+        {"content": "2번 글 (바로 방법)"},
+        {"content": "3번 글 (짧은 내 생각)"}
+      ]
+    }
+  ],
+  "_설명": "경로는 이 파일이 있는 폴더 기준. when 에 \"now\" 를 쓰면 1분 뒤 예약. approval/result 는 스크립트가 자동으로 채움."
+}
