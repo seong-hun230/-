@@ -1,0 +1,673 @@
+<title>오송 아파트 시세지도</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+/* Layout: full-bleed pan/zoom map, floating filter chips on top, tool rail on the right, detail sheet on the left (bottom on phones). */
+:root {
+  --land:#f2f1ee; --block:#e9e7e2; --bldg:#dbd7cf; --street:#ffffff; --road:#ffffff; --road-case:#d8d5ce;
+  --cgrid:#f4e2d8; --zgrid:#e7e9ee; --zone-line:#7a5af0; --park:#d5e9cf; --field:#e4eedb; --school:#dce7f5;
+  --station:#dce2eb; --rail:#a3a9b2; --ktx:#7b95b2; --rail-gap:#f2f1ee; --sel:#d9cffb;
+  --ink:#1b1f24; --ink-2:#4a515a; --ink-3:#7a818a; --panel:#ffffff; --panel-2:#f5f6f7; --line:#e2e4e7;
+  --navy:#1c2a3a; --on-navy:#ffffff; --green:#0f9f55; --green-soft:#e4f6ec; --blue:#2c67d1; --blue-soft:#e8effc;
+  --violet:#6a43e3; --violet-soft:#efe9ff; --amber:#a86a12; --amber-soft:#fcf1de;
+  --shadow:0 2px 8px rgba(20,30,40,.18); --veil:rgba(255,255,255,.82);
+  --font:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --land:#1c2025; --block:#242a30; --bldg:#2f363e; --street:#2b3037; --road:#3a4048; --road-case:#22262b;
+  --cgrid:#2e2a2b; --zgrid:#262a33; --zone-line:#a08bff; --park:#1e3025; --field:#1f2922; --school:#1f2a39;
+  --station:#2d3542; --rail:#6b737d; --ktx:#5f7d9d; --rail-gap:#1c2025; --sel:#3a3160;
+  --ink:#eef1f4; --ink-2:#c2c8cf; --ink-3:#8c949d; --panel:#1f242a; --panel-2:#272d34; --line:#353c44;
+  --navy:#2d4058; --on-navy:#ffffff; --green:#37d184; --green-soft:#16342a; --blue:#6f9fff; --blue-soft:#1a2a46;
+  --violet:#a891ff; --violet-soft:#2a2348; --amber:#e3ac52; --amber-soft:#3a2c15;
+  --shadow:0 2px 10px rgba(0,0,0,.5); --veil:rgba(28,32,37,.85); color-scheme:dark;
+}}
+:root[data-theme="dark"] {
+  --land:#1c2025; --block:#242a30; --bldg:#2f363e; --street:#2b3037; --road:#3a4048; --road-case:#22262b;
+  --cgrid:#2e2a2b; --zgrid:#262a33; --zone-line:#a08bff; --park:#1e3025; --field:#1f2922; --school:#1f2a39;
+  --station:#2d3542; --rail:#6b737d; --ktx:#5f7d9d; --rail-gap:#1c2025; --sel:#3a3160;
+  --ink:#eef1f4; --ink-2:#c2c8cf; --ink-3:#8c949d; --panel:#1f242a; --panel-2:#272d34; --line:#353c44;
+  --navy:#2d4058; --on-navy:#ffffff; --green:#37d184; --green-soft:#16342a; --blue:#6f9fff; --blue-soft:#1a2a46;
+  --violet:#a891ff; --violet-soft:#2a2348; --amber:#e3ac52; --amber-soft:#3a2c15;
+  --shadow:0 2px 10px rgba(0,0,0,.5); --veil:rgba(28,32,37,.85); color-scheme:dark;
+}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{margin:0;background:var(--land);color:var(--ink);font-family:var(--font);overflow:hidden}
+button,select{font-family:inherit;color:inherit}
+button:focus-visible,select:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+.app{position:relative;height:100%;overflow:hidden}
+
+/* map */
+#map{position:absolute;inset:0;touch-action:none;cursor:grab;background:var(--land)}
+#map.drag{cursor:grabbing}
+#world{position:absolute;left:0;top:0;width:1600px;height:1100px;transform-origin:0 0;--inv:1}
+#base{position:absolute;inset:0;width:1600px;height:1100px;display:block}
+.land{fill:var(--land)} .blk{fill:var(--block)} .bldg{fill:var(--bldg)} .street{fill:var(--street)}
+.cgrid{fill:var(--cgrid)} .zgrid{fill:var(--zgrid)} .park{fill:var(--park)} .field{fill:var(--field)}
+.school{fill:var(--school)} .station{fill:var(--station);stroke:var(--ktx);stroke-width:2}
+.road-case{fill:none;stroke:var(--road-case);stroke-linecap:round;stroke-linejoin:round}
+.road{fill:none;stroke:var(--road);stroke-linecap:round;stroke-linejoin:round}
+.rail{fill:none;stroke:var(--rail);stroke-width:6;stroke-linejoin:round}
+.ktx{fill:none;stroke:var(--ktx);stroke-width:6;stroke-linejoin:round}
+.rail-gap{fill:none;stroke:var(--rail-gap);stroke-width:2.6;stroke-dasharray:11 9;stroke-linejoin:round}
+.zone{fill:none;stroke:var(--zone-line);stroke-width:2.5;stroke-dasharray:10 7;opacity:.75}
+.zone-on .zone{opacity:1;stroke-width:4}
+.zone-fill{fill:var(--zone-line);opacity:0}
+.zone-on .zone-fill{opacity:.08}
+.area{fill:var(--block);stroke:var(--road-case);stroke-width:1.5;transition:fill .2s}
+.area.sel{fill:var(--sel);stroke:var(--violet);stroke-width:3}
+.area.dim{opacity:.45}
+.rail-label{font:500 15px var(--font);fill:var(--ink-3);letter-spacing:.06em}
+
+/* counter-scaled pins */
+.pin{position:absolute;width:0;height:0;transform:scale(var(--inv));transform-origin:0 0}
+.mk{position:absolute;left:0;bottom:7px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;
+  border:0;background:none;padding:0;cursor:pointer;filter:drop-shadow(0 2px 3px rgba(0,0,0,.22))}
+.mk::after{content:"";width:0;height:0;border:6px solid transparent;border-top-color:var(--navy);border-bottom:0;margin-top:-1px}
+.mk-tag{background:var(--navy);color:var(--on-navy);font-size:11px;font-weight:500;line-height:1;padding:4px 7px 3px;border-radius:5px 5px 0 0}
+.mk-body{background:var(--panel);border:1.5px solid var(--navy);border-radius:6px;padding:4px 9px;font-size:14px;font-weight:800;
+  white-space:nowrap;line-height:1.2;font-variant-numeric:tabular-nums;color:var(--ink)}
+.mk-body em{font-style:normal;font-weight:700;margin-right:4px}
+.sale .mk-body em{color:var(--green)} .rent .mk-body em{color:var(--blue)} .plan .mk-body em{color:var(--violet)}
+.plan .mk-tag{background:var(--violet)} .plan .mk-body{border-color:var(--violet);background:var(--violet-soft)} .plan.mk::after{border-top-color:var(--violet)}
+.mk.on .mk-body{outline:3px solid var(--violet);outline-offset:1px}
+.mk.stale .mk-tag::after{content:" ·25년";opacity:.8}
+.poi{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;display:flex;align-items:center;gap:4px;
+  font-size:12px;font-weight:500;color:var(--ink-2);pointer-events:none;
+  text-shadow:0 0 3px var(--land),0 0 3px var(--land),0 0 2px var(--land)}
+.poi svg{flex:none}
+.poi.apt{font-size:12.5px;color:var(--ink);font-weight:700;flex-direction:column;gap:1px;text-align:center}
+.poi.zone-t{font-size:17px;font-weight:800;color:var(--zone-line);line-height:1.25;text-align:center;flex-direction:column}
+.poi.station-t{font-size:14px;font-weight:800;color:var(--ink);flex-direction:column;gap:2px}
+.poi .ic{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--panel);box-shadow:var(--shadow)}
+.edu-off .poi.edu{display:none}
+.far .poi.apt{display:none}
+.narrow .pin.m{transform:scale(calc(var(--inv) * .8))}
+.hide{display:none}
+
+/* popup */
+.pop{position:absolute;left:0;bottom:66px;transform:translateX(-50%);width:244px;background:var(--panel);border-radius:10px;
+  box-shadow:0 6px 22px rgba(0,0,0,.25);overflow:hidden;cursor:default}
+.pop-h{background:var(--navy);color:var(--on-navy);display:flex;align-items:center;gap:6px;padding:10px 8px 10px 14px}
+.pop-h strong{flex:1;min-width:0;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pop-h button{border:0;background:none;color:var(--on-navy);font-size:18px;line-height:1;cursor:pointer;padding:2px 6px}
+.pop-b{padding:12px 14px 12px;display:grid;gap:4px}
+.pop-price{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
+.pop-price em{font-style:normal;margin-right:6px;font-weight:700;font-size:15px}
+.pop-sub{font-size:12px;color:var(--ink-3)}
+.pop-note{font-size:12px;color:var(--ink-2)}
+.pop-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:0 10px 10px}
+.pop-btns button{border:0;background:var(--panel-2);border-radius:6px;padding:7px 0;font-size:12.5px;cursor:pointer}
+.pop-btns button:hover{background:var(--line)}
+
+/* chrome */
+.top{position:absolute;left:12px;right:64px;top:calc(12px + env(safe-area-inset-top,0px));display:flex;gap:8px;overflow-x:auto;
+  scrollbar-width:none;padding:2px;z-index:5}
+.top::-webkit-scrollbar{display:none}
+.chip{flex:none;height:40px;display:inline-flex;align-items:center;gap:6px;padding:0 15px;border-radius:20px;background:var(--panel);
+  border:1px solid var(--line);box-shadow:var(--shadow);font-size:14.5px;font-weight:500;white-space:nowrap}
+.chip.loc{font-weight:700;gap:8px}
+.seg{flex:none;display:inline-flex;height:40px;border-radius:20px;background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);padding:3px;gap:2px}
+.seg button{border:0;background:none;border-radius:17px;padding:0 13px;font-size:14px;font-weight:500;cursor:pointer;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--navy);color:var(--on-navy);font-weight:700}
+select.chip{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:32px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink-2) 50%),linear-gradient(135deg,var(--ink-2) 50%,transparent 50%);
+  background-position:calc(100% - 17px) 17px,calc(100% - 12px) 17px;background-size:5px 5px;background-repeat:no-repeat}
+.rail-tools{position:absolute;right:calc(10px + env(safe-area-inset-right,0px));top:calc(12px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:8px;z-index:5}
+.tool{width:48px;min-height:52px;border:1px solid var(--line);background:var(--panel);border-radius:10px;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;cursor:pointer;padding:5px 0}
+.tool svg{width:20px;height:20px}
+.tool[aria-pressed="true"]{background:var(--navy);color:var(--on-navy);border-color:var(--navy)}
+.tool.brand{background:var(--green);color:#fff;border-color:var(--green);font-weight:700;border-radius:50%;width:48px;min-height:48px;font-size:12px}
+.count{position:absolute;left:calc(14px + env(safe-area-inset-left,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;
+  background:var(--panel);border:1.5px solid var(--green);border-radius:30px;box-shadow:var(--shadow);height:52px;padding:0 6px;z-index:4}
+.count span{padding:0 18px;font-size:15px;font-weight:700;white-space:nowrap}
+.count b{color:var(--green);font-weight:800;margin-left:6px;font-variant-numeric:tabular-nums}
+.count i{width:1px;height:22px;background:var(--line)}
+.zoom{position:absolute;right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;z-index:4}
+.zoom .grp{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}
+.zoom button{width:46px;height:46px;border:0;background:none;font-size:24px;cursor:pointer;display:grid;place-items:center}
+.zoom .solo{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow)}
+.attrib{position:absolute;left:0;right:0;bottom:0;padding:4px max(10px,env(safe-area-inset-right,0px)) calc(4px + env(safe-area-inset-bottom,0px));
+  font-size:10.5px;color:var(--ink-3);text-align:right;background:var(--veil);z-index:3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.legend{position:absolute;left:calc(14px + env(safe-area-inset-left,0px));bottom:calc(92px + env(safe-area-inset-bottom,0px));display:flex;gap:10px;
+  background:var(--veil);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--ink-2);z-index:3}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:9px;height:9px;border-radius:2px}
+
+/* side sheet */
+.sheet{position:absolute;left:calc(12px + env(safe-area-inset-left,0px));top:calc(64px + env(safe-area-inset-top,0px));bottom:calc(92px + env(safe-area-inset-bottom,0px));
+  width:360px;max-width:calc(100% - 84px);background:var(--panel);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.22);z-index:6;
+  display:flex;flex-direction:column;overflow:hidden}
+.sh-h{display:flex;align-items:flex-start;gap:8px;padding:16px 12px 12px 18px;border-bottom:1px solid var(--line)}
+.sh-h h2{flex:1;min-width:0;margin:0;font-size:18px;font-weight:800;line-height:1.35;text-wrap:balance}
+.sh-h button{border:0;background:var(--panel-2);border-radius:8px;width:32px;height:32px;font-size:18px;cursor:pointer;flex:none}
+.sh-c{overflow-y:auto;padding:14px 18px 20px;display:grid;gap:14px;align-content:start}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:12px;font-weight:500;padding:3px 8px;border-radius:5px;background:var(--panel-2);color:var(--ink-2)}
+.tag.sale{background:var(--green-soft);color:var(--green)} .tag.rent{background:var(--blue-soft);color:var(--blue)}
+.tag.plan{background:var(--violet-soft);color:var(--violet)} .tag.warn{background:var(--amber-soft);color:var(--amber)}
+.big{display:grid;gap:2px}
+.big .lbl{font-size:12.5px;color:var(--ink-3)}
+.big .val{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.big .val em{font-style:normal;font-size:16px;margin-right:6px}
+.big .rng{font-size:13px;color:var(--ink-2)}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;border:0;background:none;padding:10px 0;font-size:14px;cursor:pointer;color:var(--ink-3);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--ink-3);font-size:12px}
+td.r,th.r{text-align:right;white-space:nowrap}
+td.r{font-weight:700}
+dl{margin:0;display:grid;grid-template-columns:88px 1fr;gap:8px 10px;font-size:13.5px}
+dt{color:var(--ink-3)} dd{margin:0;min-width:0}
+ul.notes{margin:0;padding-left:18px;display:grid;gap:6px;font-size:13px;color:var(--ink-2);line-height:1.55}
+ul.src{margin:0;padding:0;list-style:none;display:grid;gap:8px;font-size:13px}
+ul.src a{color:var(--blue);word-break:break-all}
+.empty{font-size:13px;color:var(--ink-3);background:var(--panel-2);border-radius:8px;padding:12px}
+.h3{font-size:13px;font-weight:700;color:var(--ink-2);margin:2px 0 -4px}
+
+/* compare chart */
+.cmp{display:grid;gap:12px}
+.cmp-row{display:grid;gap:4px}
+.cmp-name{display:flex;justify-content:space-between;gap:8px;font-size:13px}
+.cmp-name b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.cmp-name small{color:var(--ink-3);font-size:11.5px}
+.bar{position:relative;height:14px;background:var(--panel-2);border-radius:4px;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+.bar i.sale{background:var(--green)} .bar i.rent{background:var(--blue)} .bar i.plan{background:var(--violet)}
+.bar i.ext{background:repeating-linear-gradient(135deg,var(--violet) 0 3px,transparent 3px 7px);opacity:.55;border-radius:0 4px 4px 0}
+.axis{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+
+@media (max-width:700px){
+  .sheet{left:0;right:0;top:auto;bottom:0;width:auto;max-width:none;max-height:64%;border-radius:16px 16px 0 0;
+    padding-bottom:env(safe-area-inset-bottom,0px)}
+  .legend{display:none}
+  .count{height:44px} .count span{padding:0 12px;font-size:13.5px}
+  .zoom button{width:42px;height:42px}
+  .chip,.seg{height:38px}
+  .tool{width:44px;min-height:48px;font-size:11px}
+  .tool.brand{width:44px;min-height:44px}
+}
+@media (prefers-reduced-motion: reduce){#world{transition:none!important}}
+</style>
+
+<div class="app" id="app">
+  <div id="map" aria-label="오송역 주변 아파트 시세 지도">
+    <div id="world">
+      <svg id="base" viewBox="0 0 1600 1100" aria-hidden="true"></svg>
+      <div id="pois"></div>
+      <div id="markers"></div>
+      <div id="popLayer"></div>
+    </div>
+  </div>
+
+  <div class="top">
+    <span class="chip loc">
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c-3.9 0-7 3.1-7 7 0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" fill="currentColor"/></svg>
+      청주시 흥덕구 오송읍
+    </span>
+    <div class="seg" role="group" aria-label="단지 구분">
+      <button type="button" data-f="all" aria-pressed="true">전체</button>
+      <button type="button" data-f="sale" aria-pressed="false">매매</button>
+      <button type="button" data-f="rent" aria-pressed="false">임대</button>
+      <button type="button" data-f="plan" aria-pressed="false">공급예정</button>
+    </div>
+    <select class="chip" id="mode" aria-label="지도 표시 기준">
+      <option value="price">실거래가</option>
+      <option value="units">세대수</option>
+      <option value="year">입주연도</option>
+    </select>
+  </div>
+
+  <div class="rail-tools">
+    <button type="button" class="tool brand" id="btnCmp" aria-pressed="false" title="단지별 가격 비교">비교</button>
+    <button type="button" class="tool" id="btnEdu" aria-pressed="true" title="학교 표시">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 1 9l11 6 9-4.9V17h2V9L12 3zm-6.8 9.2V16c0 1.7 3 3.5 6.8 3.5s6.8-1.8 6.8-3.5v-3.8L12 16l-6.8-3.8z" fill="currentColor"/></svg>교육</button>
+    <button type="button" class="tool" id="btnDev" aria-pressed="false" title="도시개발구역 강조">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 21h16L12 2zm0 5.5 4.6 11.5H7.4L12 7.5z" fill="currentColor"/></svg>개발</button>
+    <button type="button" class="tool" id="btnInfo" aria-pressed="false" title="자료 출처와 유의사항">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M11 10.5h2V17h-2zM11 7h2v2h-2z" fill="currentColor"/></svg>안내</button>
+  </div>
+
+  <div class="legend" aria-hidden="true">
+    <span><i style="background:var(--green)"></i>매매 실거래</span>
+    <span><i style="background:var(--blue)"></i>임대(전세·보증금)</span>
+    <span><i style="background:var(--violet)"></i>공급 예정</span>
+  </div>
+
+  <div class="count">
+    <span>단지<b id="cnt">9</b></span><i></i><span>2026.10.14 기준</span>
+  </div>
+
+  <div class="zoom">
+    <div class="grp">
+      <button type="button" id="zin" aria-label="확대">+</button>
+      <button type="button" id="zout" aria-label="축소">−</button>
+    </div>
+    <button type="button" class="solo" id="zfit" aria-label="처음 화면으로">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5" stroke="currentColor" stroke-width="2"/></svg>
+    </button>
+  </div>
+
+  <div class="attrib">브리핑용 개략도 · 위치·도로는 실제와 다를 수 있음 · 시세: 국토부 실거래가 재가공 자료(호갱노노·리치고·KB부동산 등)</div>
+
+  <aside class="sheet" id="sheet" hidden></aside>
+</div>
+
+<script>
+(() => {
+const W = 1600, H = 1100;
+const NS = 'http://www.w3.org/2000/svg';
+
+/* ---------- 단지 데이터 (2026.10.14 웹 검색 기준) ---------- */
+const DATA = [
+  { id:'paragon1', kind:'sale', name:'오송역 파라곤 센트럴시티 1차', short:'파라곤센트럴\n시티1차',
+    box:[300,175,470,290], units:'2,415세대', year:'2023.06', yearShort:'23년 입주', area:'공급 85~86㎡ (전용 59㎡)', pyeong:'25평',
+    price:'3.9억', priceFull:'3억 9,000', priceNote:'최근 실거래 · 2026.09.27 · 23층',
+    range:'2026년 9월 거래 3.84억 ~ 4.5억',
+    trades:[['2026.09.27','86B (전용 59)','23층','3억 9,000'],['2026.09.26','86B (전용 59)','19층','4억 700'],
+            ['2026.09.21','85A (전용 59)','8층','3억 8,400'],['2026.09.15','전용 59.73㎡','19층','4억 5,000']],
+    notes:['85A 타입 실거래 평균 3억 8,308만원 (호갱노노)','1차에는 전용 84㎡ 타입이 없음. 비교 시 평형 차이 감안'],
+    src:[['호갱노노 · 파라곤센트럴시티1차','https://hogangnono.com/apt/ct02b'],['리치고 · 오송역파라곤센트럴시티','https://m.richgo.ai/realty/danji/a8tzeDT'],['경매알리미 · 실거래 목록','https://map.auctionmsg.com/apt/detail/16297204']] },
+  { id:'donga', kind:'sale', name:'오송역 동아라이크텐', short:'동아라이크텐',
+    box:[120,680,395,880], units:'970세대', year:'2020', yearShort:'20년 입주', area:'전용 77·84㎡ 등', pyeong:'33평',
+    price:'4.5억', priceFull:'4억 5,000', priceNote:'최근 실거래 · 2026.09.06',
+    range:'리치고 시세(26.09) 30평 4.1억 · 33평 4.7억',
+    trades:[['2026.09.06','33평','-','4억 5,000'],['2025.12.17','전용 77㎡ (30평)','21층','4억 4,300'],['2025.12.17','33평','7층','4억 3,500']],
+    notes:['리치고 시세(2026.09.07): 30평 매매 4.1억·전세 2.5억 / 33평 매매 4.7억·전세 3.1억','KB시세 일반가 4억 3,250 (2025.12.19)'],
+    src:[['리치고 · 오송역동아라이크텐','https://m.richgo.ai/realty/danji/a2vXlkg'],['KB부동산 · 오송역동아라이크텐','https://kbland.kr/se/c/37628'],['집순위 · 실거래','https://houseranking.kr/houseranking/news/popup_view_houseranking.php?aptcode=B854357']] },
+  { id:'seohan', kind:'sale', stale:true, name:'오송역 서한이다음 노블리스', short:'서한이다음\n노블리스',
+    box:[430,680,625,880], units:'1,113세대', year:'2025.05', yearShort:'25년 입주', area:'전용 101~182㎡', pyeong:'38평',
+    price:'4.4억', priceFull:'4억 3,714', priceNote:'최근 실거래 · 2025.09.14 · 9층 (분양권)',
+    range:'2025.04~09 분양권 4억 2,427 ~ 4억 4,928',
+    trades:[['2025.09.14','공급 127㎡ (38평)','9층','4억 3,714']],
+    notes:['분양가: 전용 101㎡ 4억 300 ~ 전용 182㎡ 6억 6,900','2026년 매매 실거래는 검색으로 확인되지 않음. 국토부 실거래가 시스템에서 재확인 필요'],
+    src:[['호갱노노 · 서한이다음노블리스','https://hogangnono.com/apt/fzh19'],['국토일보 · 분양 기사','https://www.ikld.kr/news/articleView.html?idxno=260142']] },
+  { id:'hill', kind:'rent', prefix:'임', name:'힐스테이트 오송역퍼스트 (민간임대)', short:'힐스테이트\n오송역퍼스트',
+    box:[900,785,1075,895], units:'2,094세대', year:'2026.09~2027.02 예정', yearShort:'26~27년 입주예정', area:'전용 59㎡ (공급분)', pyeong:'25평',
+    price:'3.2억', priceFull:'3억 1,900~', priceNote:'임대보증금 (공급 당시) · 실거래 없음',
+    range:'임대보증금 3억 1,900 ~ 3억 3,400',
+    trades:[],
+    notes:['10년 민간임대, 임대료 상승률 연 5% 이내','10년 후 분양예정금액 세대당 4억원 이하 전망 (조합 총회 보도)','일반공급 200가구에 3만 4,523명 접수, 평균 172.6 대 1','입주 시기는 자료마다 다름 (2026.09 / 2027.02)'],
+    src:[['헤럴드K · 일반공급 청약','https://www.heraldk.com/article/2026011416490706191'],['위키트리 · 청약 결과','https://www.wikitree.co.kr/articles/1116836'],['위키트리 · 임대 조건','https://www.wikitree.co.kr/articles/1100552'],['호갱노노 · 힐스테이트오송역퍼스트','https://hogangnono.com/apt/fH952']] },
+  { id:'daegwang', kind:'rent', prefix:'전', name:'오송역 대광로제비앙 (민간임대)', short:'대광로제비앙',
+    box:[775,575,905,695], units:'1,541세대', year:'2023', yearShort:'23년 입주', area:'전용 59㎡ 등', pyeong:'25평',
+    price:'1.5억', priceFull:'1억 5,270', priceNote:'전세 실거래 · 2025.12.23',
+    range:'같은 시기 여러 층 동일 금액 전세 거래',
+    trades:[['2025.12.23','전용 59.94㎡','16층','전세 1억 5,270'],['2025.12.23','전용 59.94㎡','14층','전세 1억 5,270']],
+    notes:['민간임대 단지로 매매 실거래 없음'],
+    src:[['디스코 · 봉산리 1510','https://disco.re/l/r03raxk'],['집품 · 오송역 대광로제비앙','https://zippoom.com/review/gWG-UwytUTLjF96O1pB6kQ']] },
+  { id:'centum', kind:'rent', prefix:'호', name:'오송역 대광로제비앙 그랜드센텀 (민간임대)', short:'대광로제비앙\n그랜드센텀',
+    box:[635,715,755,880], units:'1,658세대', year:'2024', yearShort:'24년 입주', area:'전용 84㎡ 등', pyeong:'34평',
+    price:'2.85억', priceFull:'2억 8,500', priceNote:'매물 호가 (실거래 아님)',
+    range:'811동 전용 84.99㎡ 매물',
+    trades:[],
+    notes:['민간임대 단지 매물 호가로, 거래 성격(임차권 등)은 매물별 확인 필요'],
+    src:[['한경닷컴 부동산 · 매물','https://realestate.hankyung.com/listing/17247572'],['디스코 · 봉산리 1531','https://disco.re/l/2ja7ii9']] },
+  { id:'paragon2', kind:'rent', prefix:'전', name:'오송역 파라곤 센트럴시티 2차 (민간임대)', short:'파라곤센트럴\n시티2차',
+    box:[120,335,335,470], units:'1,673세대', year:'-', yearShort:'민간임대', area:'전용 68·84㎡', pyeong:'34평',
+    price:'3.3억', priceFull:'3억 2,900', priceNote:'전세 실거래 · 2026.05',
+    range:'공급 112㎡ (전용 84㎡ 추정) 전세',
+    trades:[['2026.05','공급 112㎡','-','전세 3억 2,900']],
+    notes:['민간임대 단지로 매매 실거래 없음 (KB부동산)'],
+    src:[['KB부동산 · 파라곤센트럴시티2차','https://kbland.kr/se/c/430592']] },
+  { id:'jeil', kind:'rent', prefix:'', name:'제일풍경채 오송 (민간임대)', short:'제일풍경채오송',
+    box:[275,480,395,560], units:'545세대', year:'-', yearShort:'민간임대', area:'81~110㎡', pyeong:'임대',
+    price:null, priceFull:'자료 없음', priceNote:'공개 거래 자료 미확인',
+    range:'공공지원 민간임대 (오송지구 B-5BL)',
+    trades:[],
+    notes:['검색 범위에서 매매·전세 실거래가 확인되지 않음'],
+    src:[['아파트분양정보 · 제일풍경채오송','https://www.aptbunyang.net/?page=bydetail&s3_bylist_uid=11128']] },
+  { id:'hello', kind:'plan', prefix:'공급', name:'오송역 헬로우시티 (C-17BL)', short:'오송역 헬로우시티',
+    box:[1255,560,1345,640], units:'516가구', year:'-', yearShort:'조합원 모집', area:'아파트 480세대 + 오피스텔 36실', pyeong:'84㎡',
+    price:'6억대', priceFull:'6억대', priceNote:'84㎡ 공급 예정가 (조합원 모집)',
+    range:'지상 49층 주거복합 · 오송역 앞',
+    trades:[],
+    notes:['오송역세권 도시개발사업지구 C-17BL','토지확보완료형 지역주택조합, 주택홍보관 2026.10.23 오픈 예정','공급가·개발계획은 예정사항으로 변경될 수 있음','지도상 위치는 개략 표시'],
+    src:[['오송역 헬로우시티 상담 브리핑 자료 (자체 자료)',null]] },
+];
+
+/* ---------- 바탕 지도 (개략도) ---------- */
+const svg = document.getElementById('base');
+const el = (tag, attrs, parent = svg) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); parent.appendChild(n); return n; };
+const path = pts => 'M' + pts.map(p => p.join(',')).join('L');
+const poly = pts => path(pts) + 'Z';
+
+const defs = el('defs', {});
+const pat = (id, w, h, bw, bh, cls, rot) => {
+  const p = el('pattern', { id, width:w, height:h, patternUnits:'userSpaceOnUse', patternTransform:`rotate(${rot})` }, defs);
+  el('rect', { x:(w-bw)/2, y:(h-bh)/2, width:bw, height:bh, rx:3, class:cls }, p);
+};
+pat('cgrid', 70, 46, 58, 34, 'cgrid', -38);
+pat('zgrid', 96, 70, 82, 56, 'zgrid', -8);
+pat('vgrid', 52, 40, 42, 30, 'blk', 6);
+
+el('rect', { x:0, y:0, width:W, height:H, class:'land' });
+
+// 녹지·농지
+[[40,140,250,270],[1250,40,1560,250],[1420,300,1580,460],[700,950,1040,1090],[1180,950,1580,1090]].forEach(b =>
+  el('rect', { x:b[0], y:b[1], width:b[2]-b[0], height:b[3]-b[1], rx:18, class:'field' }));
+// 남쪽 마을 블록
+el('rect', { x:20, y:945, width:620, height:140, rx:10, class:'street' });
+el('rect', { x:20, y:945, width:620, height:140, rx:10, fill:'url(#vgrid)' });
+
+// 상업지구 격자
+const cPoly = [[470,200],[600,185],[900,330],[1040,460],[900,540],[700,560],[560,480],[470,380]];
+el('path', { d:poly(cPoly), class:'street' });
+el('path', { d:poly(cPoly), fill:'url(#cgrid)' });
+
+// 오송역세권 도시개발구역
+const zPoly = [[1060,610],[1200,560],[1460,540],[1570,650],[1570,905],[1090,905]];
+const zoneG = el('g', { id:'zoneG' });
+el('path', { d:poly(zPoly), class:'street' }, zoneG);
+el('path', { d:poly(zPoly), fill:'url(#zgrid)' }, zoneG);
+el('path', { d:poly(zPoly), class:'zone-fill' }, zoneG);
+
+// 공원·학교
+el('rect', { x:110, y:500, width:150, height:130, rx:16, class:'park' });
+[[450,118,560,180],[575,215,660,280],[290,575,390,628],[1080,935,1170,1000]].forEach(b =>
+  el('rect', { x:b[0], y:b[1], width:b[2]-b[0], height:b[3]-b[1], rx:8, class:'school' }));
+
+// 단지 영역 + 동 배치
+const areaEl = {};
+DATA.forEach(c => {
+  const [x1,y1,x2,y2] = c.box;
+  areaEl[c.id] = el('rect', { x:x1, y:y1, width:x2-x1, height:y2-y1, rx:12, class:'area', id:'area-'+c.id });
+  const g = el('g', { 'pointer-events':'none' });
+  const cw = 34, rh = 30, bw = 24, bh = 9;
+  const cols = Math.max(1, Math.floor((x2-x1-16)/cw)), rows = Math.max(1, Math.floor((y2-y1-16)/rh));
+  const ox = x1 + ((x2-x1) - cols*cw)/2 + (cw-bw)/2, oy = y1 + ((y2-y1) - rows*rh)/2 + (rh-bh)/2;
+  for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++)
+    el('rect', { x:ox + k*cw, y:oy + r*rh, width:bw, height:bh, rx:2, class:'bldg' }, g);
+});
+
+// 도로 (외곽선 → 노면 순)
+const ROADS = [
+  { w:26, p:[[0,300],[260,300],[520,470],[760,700],[880,900],[930,1100]] },
+  { w:20, p:[[0,645],[300,650],[725,660]] },
+  { w:16, p:[[410,0],[412,300],[418,660],[420,1100]] },
+  { w:16, p:[[620,0],[700,140],[900,330],[1050,470],[1160,520]] },
+  { w:18, p:[[0,920],[1600,905]] },
+  { w:14, p:[[0,95],[400,100],[600,110],[700,140]] },
+  { w:14, p:[[1240,525],[1460,540],[1600,520]] },
+  { w:12, p:[[1060,610],[1090,905]] },
+  { w:10, p:[[1250,40],[1300,300],[1360,400]] },
+  { w:10, p:[[700,560],[760,700]] },
+];
+ROADS.forEach(r => el('path', { d:path(r.p), class:'road-case', 'stroke-width':r.w + 4 }));
+ROADS.forEach(r => el('path', { d:path(r.p), class:'road', 'stroke-width':r.w }));
+
+// 철도
+const RAILS = [
+  { c:'ktx', id:'r-ktx', p:[[980,0],[1080,250],[1150,430],[1190,560],[1260,800],[1330,1100]] },
+  { c:'ktx', p:[[1008,0],[1108,250],[1178,430],[1218,560],[1288,800],[1358,1100]] },
+  { c:'rail', id:'r-cb', p:[[560,1100],[700,950],[880,760],[1060,600],[1180,510],[1360,400],[1600,300]] },
+  { c:'rail', p:[[586,1100],[724,958],[902,772],[1080,614],[1198,526],[1374,420],[1600,322]] },
+  { c:'rail', p:[[760,0],[900,170],[1040,320],[1150,430]] },
+];
+RAILS.forEach(r => { const a = { d:path(r.p), class:r.c }; if (r.id) a.id = r.id; el('path', a); el('path', { d:path(r.p), class:'rail-gap' }); });
+const railText = (href, txt, off) => { const t = el('text', { class:'rail-label', dy:-10 }); const tp = el('textPath', { href, startOffset:off }, t); tp.textContent = txt; };
+railText('#r-ktx', '경부 · 호남고속선', '76%');
+railText('#r-cb', '충북선', '20%');
+railText('#r-cb', '충북선', '78%');
+
+// 오송역 역사
+el('rect', { x:1140, y:420, width:90, height:165, rx:12, class:'station', transform:'rotate(-17 1185 502)' });
+el('path', { d:poly(zPoly), class:'zone' }, zoneG);
+
+/* ---------- 지도 라벨 (POI) ---------- */
+const poiLayer = document.getElementById('pois');
+const ICON = {
+  school:'<span class="ic"><svg width="12" height="12" viewBox="0 0 24 24"><path d="M12 3 1 9l11 6 9-4.9V17h2V9L12 3z" fill="currentColor"/></svg></span>',
+  park:'<span class="ic"><svg width="12" height="12" viewBox="0 0 24 24"><path d="M12 2 5 12h4l-3 5h5v5h2v-5h5l-3-5h4z" fill="var(--green)"/></svg></span>',
+  poi:'<span class="ic"><svg width="12" height="12" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM7 8v8l7-4z" fill="currentColor"/></svg></span>',
+  apt:'<svg width="14" height="14" viewBox="0 0 24 24"><path d="M4 21V5l8-3 8 3v16h-6v-5h-4v5z" fill="var(--ink-3)"/></svg>',
+  station:'<span class="ic" style="width:30px;height:30px;background:var(--navy);color:var(--on-navy)"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 2c-4 0-8 .5-8 4v9.5A3.5 3.5 0 0 0 7.5 19L6 20.5v.5h12v-.5L16.5 19a3.5 3.5 0 0 0 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3.5-7H6V6h5zm5.5 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm1.5-7h-5V6h5z" fill="currentColor"/></svg></span>'
+};
+const POIS = [
+  { t:'오송역', x:1185, y:500, k:'station' },
+  { t:'오송2고등학교<br>(2028년 3월 예정)', x:505, y:150, k:'school', edu:true },
+  { t:'오송솔미초', x:618, y:248, k:'school', edu:true },
+  { t:'솔강초', x:340, y:602, k:'school', edu:true },
+  { t:'오송초', x:1125, y:968, k:'school', edu:true },
+  { t:'정중공원', x:185, y:575, k:'park' },
+  { t:'롯데시네마', x:655, y:515, k:'poi' },
+  { t:'오송역세권<br>도시개발구역', x:1430, y:770, k:'zone' },
+];
+POIS.forEach(p => {
+  const pin = document.createElement('div'); pin.className = 'pin'; pin.style.left = p.x + 'px'; pin.style.top = p.y + 'px';
+  const d = document.createElement('div');
+  if (p.k === 'zone') { d.className = 'poi zone-t'; d.innerHTML = p.t; }
+  else if (p.k === 'station') { d.className = 'poi station-t'; d.innerHTML = ICON.station + '<span>' + p.t + '</span>'; }
+  else { d.className = 'poi' + (p.edu ? ' edu' : ''); d.innerHTML = ICON[p.k] + '<span style="text-align:center">' + p.t + '</span>'; }
+  pin.appendChild(d); poiLayer.appendChild(pin);
+});
+DATA.forEach(c => {
+  const [x1,y1,x2,y2] = c.box;
+  const pin = document.createElement('div'); pin.className = 'pin'; pin.dataset.id = c.id;
+  pin.style.left = (x1+x2)/2 + 'px'; pin.style.top = (y2 - 30) + 'px';
+  const d = document.createElement('div'); d.className = 'poi apt';
+  d.innerHTML = ICON.apt + '<span>' + c.short.replace('\n', '<br>') + '</span>';
+  pin.appendChild(d); poiLayer.appendChild(pin);
+  c.ax = (x1+x2)/2; c.ay = y1 + 12;
+});
+
+/* ---------- 마커 ---------- */
+const mkLayer = document.getElementById('markers');
+const KIND = { sale:'매매', rent:'민간임대', plan:'공급예정' };
+const state = { filter:'all', mode:'price', sel:null };
+const priceHTML = c => {
+  if (!c.price) return '<em></em>시세 미확인';
+  const pre = c.kind === 'sale' ? '매' : c.prefix;
+  return '<em>' + pre + '</em>' + c.price;
+};
+function renderMarkers() {
+  mkLayer.innerHTML = '';
+  let n = 0;
+  DATA.forEach(c => {
+    const show = state.filter === 'all' || state.filter === c.kind;
+    areaEl[c.id].classList.toggle('dim', !show);
+    document.querySelector('#pois .pin[data-id="'+c.id+'"]').classList.toggle('hide', !show);
+    if (!show) return;
+    n++;
+    const pin = document.createElement('div'); pin.className = 'pin m'; pin.style.left = c.ax + 'px'; pin.style.top = c.ay + 'px';
+    const b = document.createElement('button'); b.type = 'button';
+    b.className = 'mk ' + c.kind + (c.stale && state.mode === 'price' ? ' stale' : '') + (state.sel === c.id ? ' on' : '');
+    let tag, body;
+    if (state.mode === 'price') { tag = c.pyeong; body = priceHTML(c); }
+    else if (state.mode === 'units') { tag = KIND[c.kind]; body = c.units; }
+    else { tag = KIND[c.kind]; body = c.yearShort; }
+    b.innerHTML = '<span class="mk-tag">' + tag + '</span><span class="mk-body">' + body + '</span>';
+    b.setAttribute('aria-label', c.name + ' ' + (c.price ? c.priceFull : '') + ' ' + c.priceNote);
+    b.addEventListener('click', e => { e.stopPropagation(); select(c.id, true); });
+    pin.appendChild(b); mkLayer.appendChild(pin);
+  });
+  document.getElementById('cnt').textContent = n;
+}
+
+/* ---------- 팝업 ---------- */
+const popLayer = document.getElementById('popLayer');
+const byId = id => DATA.find(c => c.id === id);
+function select(id, pan) {
+  state.sel = id;
+  Object.values(areaEl).forEach(a => a.classList.remove('sel'));
+  popLayer.innerHTML = '';
+  if (!id) { renderMarkers(); return; }
+  const c = byId(id);
+  areaEl[id].classList.add('sel');
+  renderMarkers();
+  const pin = document.createElement('div'); pin.className = 'pin m'; pin.style.left = c.ax + 'px'; pin.style.top = c.ay + 'px';
+  const kcol = c.kind === 'sale' ? 'var(--green)' : c.kind === 'rent' ? 'var(--blue)' : 'var(--violet)';
+  const head = c.kind === 'sale' ? '매매' : c.kind === 'plan' ? '공급' : ({'전':'전세','임':'보증금','호':'호가'}[c.prefix] || '임대');
+  pin.innerHTML = '<div class="pop" role="dialog" aria-label="' + c.name + '">' +
+    '<div class="pop-h"><strong>' + c.name + '</strong><button type="button" aria-label="닫기">×</button></div>' +
+    '<div class="pop-b"><div class="pop-price"><em style="color:' + kcol + '">' + head + '</em>' + c.priceFull + '</div>' +
+    '<div class="pop-note">' + c.priceNote + '</div><div class="pop-sub">' + c.units + ' · ' + (c.year === '-' ? c.yearShort : c.year + ' 입주') + '</div></div>' +
+    '<div class="pop-btns"><button type="button" data-t="trade">실거래</button><button type="button" data-t="info">단지</button><button type="button" data-t="src">출처</button></div></div>';
+  pin.querySelector('.pop').addEventListener('pointerdown', e => e.stopPropagation());
+  pin.querySelector('.pop-h button').addEventListener('click', () => select(null));
+  pin.querySelectorAll('.pop-btns button').forEach(b => b.addEventListener('click', () => openDetail(c.id, b.dataset.t)));
+  popLayer.appendChild(pin);
+  if (pan) ensureVisible(c.ax, c.ay);
+}
+
+/* ---------- 상세 시트 ---------- */
+const sheet = document.getElementById('sheet');
+const esc = s => String(s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+function sheetShell(title, inner) {
+  sheet.innerHTML = '<div class="sh-h"><h2>' + title + '</h2><button type="button" aria-label="닫기">×</button></div><div class="sh-c">' + inner + '</div>';
+  sheet.querySelector('.sh-h button').addEventListener('click', closeSheet);
+  sheet.hidden = false;
+}
+function closeSheet() { sheet.hidden = true; setPressed('btnCmp', false); setPressed('btnInfo', false); }
+function openDetail(id, tab) {
+  const c = byId(id);
+  setPressed('btnCmp', false); setPressed('btnInfo', false);
+  const head = c.kind === 'sale' ? '매매' : c.kind === 'plan' ? '공급' : ({'전':'전세','임':'보증금','호':'호가'}[c.prefix] || '임대');
+  const tags = '<div class="tags"><span class="tag ' + c.kind + '">' + KIND[c.kind] + '</span><span class="tag">' + c.units + '</span><span class="tag">' +
+    (c.year === '-' ? c.yearShort : c.year + ' 입주') + '</span>' + (c.stale ? '<span class="tag warn">2025년 거래 기준</span>' : '') + '</div>';
+  const big = '<div class="big"><span class="lbl">' + esc(c.priceNote) + '</span><span class="val"><em>' + head + '</em>' + c.priceFull + '</span><span class="rng">' + esc(c.range) + '</span></div>';
+  const tabs = '<div class="tabs" role="tablist">' + [['trade','실거래'],['info','단지정보'],['src','출처']].map(t =>
+    '<button type="button" role="tab" data-t="' + t[0] + '" aria-selected="' + (t[0] === tab) + '">' + t[1] + '</button>').join('') + '</div><div id="tabBody"></div>';
+  sheetShell(esc(c.name), tags + big + tabs);
+  const body = sheet.querySelector('#tabBody');
+  const draw = t => {
+    sheet.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.t === t));
+    if (t === 'trade') {
+      body.innerHTML = c.trades.length
+        ? '<div style="overflow-x:auto"><table><thead><tr><th>계약일</th><th>면적</th><th>층</th><th class="r">금액(만원)</th></tr></thead><tbody>' +
+          c.trades.map(r => '<tr><td>' + r[0] + '</td><td>' + esc(r[1]) + '</td><td>' + r[2] + '</td><td class="r">' + r[3] + '</td></tr>').join('') + '</tbody></table></div>'
+        : '<p class="empty">공개된 실거래 기록이 없습니다. ' + esc(c.priceNote) + '</p>';
+      body.innerHTML += '<ul class="notes" style="margin-top:12px">' + c.notes.map(n => '<li>' + esc(n) + '</li>').join('') + '</ul>';
+    } else if (t === 'info') {
+      body.innerHTML = '<dl><dt>단지명</dt><dd>' + esc(c.name) + '</dd><dt>구분</dt><dd>' + KIND[c.kind] + '</dd><dt>규모</dt><dd>' + c.units + '</dd>' +
+        '<dt>입주</dt><dd>' + (c.year === '-' ? '-' : c.year) + '</dd><dt>면적</dt><dd>' + esc(c.area) + '</dd><dt>표시 평형</dt><dd>' + c.pyeong + '</dd></dl>';
+    } else {
+      body.innerHTML = '<ul class="src">' + c.src.map(s => '<li>' + (s[1] ? '<a href="' + s[1] + '" target="_blank" rel="noopener">' + esc(s[0]) + '</a>' : esc(s[0])) + '</li>').join('') +
+        '<li><a href="https://rt.molit.go.kr" target="_blank" rel="noopener">국토교통부 실거래가 공개시스템 (원자료 확인)</a></li></ul>';
+    }
+  };
+  sheet.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => draw(b.dataset.t)));
+  draw(tab || 'trade');
+}
+function openCompare() {
+  const MAX = 7;
+  const rows = [
+    { id:'paragon1', v:3.9, lbl:'3.9억', sub:'25평 · 26.09 실거래' },
+    { id:'donga', v:4.5, lbl:'4.5억', sub:'33평 · 26.09 실거래' },
+    { id:'seohan', v:4.37, lbl:'4.37억', sub:'38평 · 25.09 분양권' },
+    { id:'hello', v:6.0, ext:1.0, lbl:'6억대', sub:'84㎡ · 공급 예정가' },
+  ];
+  const rent = [
+    { id:'paragon2', v:3.29, lbl:'3.29억', sub:'전세 · 26.05' },
+    { id:'hill', v:3.19, ext:0.15, lbl:'3.19~3.34억', sub:'임대보증금' },
+    { id:'centum', v:2.85, lbl:'2.85억', sub:'매물 호가' },
+    { id:'daegwang', v:1.53, lbl:'1.53억', sub:'전세 · 25.12' },
+  ];
+  const row = r => { const c = byId(r.id); return '<div class="cmp-row"><div class="cmp-name"><span>' + c.short.replace('\n', '') + ' <small>' + r.sub + '</small></span><b>' + r.lbl + '</b></div>' +
+    '<div class="bar"><i class="' + c.kind + '" style="width:' + (r.v/MAX*100) + '%"></i>' +
+    (r.ext ? '<i class="ext" style="left:' + (r.v/MAX*100) + '%;width:' + (r.ext/MAX*100) + '%"></i>' : '') + '</div></div>'; };
+  const axis = '<div class="axis">' + [0,1,2,3,4,5,6,7].map(v => '<span>' + v + '억</span>').join('') + '</div>';
+  sheetShell('주변 단지 가격 비교',
+    '<p class="pop-note" style="margin:0">평형이 서로 다르므로 표시 평형을 함께 보세요. 막대 길이는 0~7억 같은 축입니다.</p>' +
+    '<div class="h3">매매 · 공급가</div><div class="cmp">' + rows.map(row).join('') + axis + '</div>' +
+    '<div class="h3">민간임대 · 전세 · 보증금</div><div class="cmp">' + rent.map(row).join('') + axis + '</div>' +
+    '<ul class="notes"><li>빗금 구간은 가격 범위 (예: 6억대 = 6억 이상 7억 미만)</li><li>서한이다음 노블리스는 2026년 실거래가 확인되지 않아 2025년 분양권 거래로 표시</li><li>제일풍경채 오송은 공개 거래 자료가 없어 제외</li></ul>');
+  setPressed('btnCmp', true); setPressed('btnInfo', false);
+}
+function openInfo() {
+  sheetShell('자료 안내',
+    '<div class="tags"><span class="tag">기준일 2026.10.14</span><span class="tag">웹 공개자료 수집</span></div>' +
+    '<ul class="notes">' +
+    '<li>실거래가는 국토교통부 실거래가 공개 자료를 재가공한 민간 서비스(호갱노노·리치고·KB부동산·집순위 등)에서 확인한 값입니다. 계약일·금액은 서비스마다 하루 이틀 차이가 날 수 있습니다.</li>' +
+    '<li>민간임대 단지는 매매 거래가 없어 전세·임대보증금·매물 호가를 표시했습니다. 매매가와 직접 비교하지 마세요.</li>' +
+    '<li>오송역 헬로우시티 가격은 조합원 모집 자료의 공급 예정가이며 시세가 아닙니다. 변경될 수 있습니다.</li>' +
+    '<li>바탕 지도는 브리핑용 개략도입니다. 도로·철도·단지 위치와 크기는 실제와 다를 수 있습니다.</li>' +
+    '<li>고객 안내 전 국토교통부 실거래가 공개시스템에서 최신 거래를 다시 확인하세요.</li></ul>' +
+    '<ul class="src"><li><a href="https://rt.molit.go.kr" target="_blank" rel="noopener">국토교통부 실거래가 공개시스템</a></li></ul>' +
+    '<p class="pop-note" style="margin:0">단지별 출처는 마커를 누른 뒤 <b>출처</b> 탭에서 볼 수 있습니다.</p>');
+  setPressed('btnInfo', true); setPressed('btnCmp', false);
+}
+function setPressed(id, v) { document.getElementById(id).setAttribute('aria-pressed', v); }
+
+/* ---------- 팬 / 줌 ---------- */
+const map = document.getElementById('map'), world = document.getElementById('world');
+const V = { k:1, tx:0, ty:0, min:0.12, max:3 };
+const clamp = k => Math.min(V.max, Math.max(V.min, k));
+function apply(anim) {
+  world.style.transition = anim ? 'transform .3s ease' : 'none';
+  world.style.transform = 'translate(' + V.tx + 'px,' + V.ty + 'px) scale(' + V.k + ')';
+  world.style.setProperty('--inv', (1 / V.k).toFixed(4));
+  world.classList.toggle('far', V.k < 0.5);
+}
+function zoomAt(px, py, f, anim) { const k = clamp(V.k * f); V.tx = px - (px - V.tx) * (k / V.k); V.ty = py - (py - V.ty) * (k / V.k); V.k = k; apply(anim); }
+function fit(anim) {
+  const r = map.getBoundingClientRect();
+  const narrow = r.width < 700;
+  document.getElementById('app').classList.toggle('narrow', narrow);
+  const b = narrow ? [110, 170, 1350, 920] : [90, 90, 1520, 1000];
+  const padT = 70, padB = 100, padX = narrow ? 8 : 70;
+  const k = clamp(Math.min((r.width - padX * 2) / (b[2] - b[0]), (r.height - padT - padB) / (b[3] - b[1])));
+  V.k = k; V.tx = r.width / 2 - (b[0] + b[2]) / 2 * k; V.ty = padT + (r.height - padT - padB) / 2 - (b[1] + b[3]) / 2 * k;
+  apply(anim);
+}
+function ensureVisible(x, y) {
+  const r = map.getBoundingClientRect();
+  const sx = V.tx + x * V.k, sy = V.ty + y * V.k;
+  const sheetW = (!sheet.hidden && r.width >= 700) ? 380 : 0;
+  const minX = 140 + sheetW, maxX = r.width - 140, minY = 300, maxY = r.height - 120;
+  let dx = 0, dy = 0;
+  if (sx < minX) dx = minX - sx; else if (sx > maxX) dx = maxX - sx;
+  if (sy < minY) dy = minY - sy; else if (sy > maxY) dy = maxY - sy;
+  if (dx || dy) { V.tx += dx; V.ty += dy; apply(true); }
+}
+const ptrs = new Map(); let moved = 0, pinch = null;
+map.addEventListener('pointerdown', e => {
+  if (e.target.closest('.mk, .pop')) return;
+  map.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x:e.clientX, y:e.clientY }); moved = 0;
+  map.classList.add('drag');
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d:Math.hypot(a.x - b.x, a.y - b.y) }; }
+});
+map.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId)) return;
+  const prev = ptrs.get(e.pointerId); const cur = { x:e.clientX, y:e.clientY }; ptrs.set(e.pointerId, cur);
+  if (ptrs.size === 1) { V.tx += cur.x - prev.x; V.ty += cur.y - prev.y; moved += Math.abs(cur.x - prev.x) + Math.abs(cur.y - prev.y); apply(false); }
+  else if (ptrs.size === 2 && pinch) {
+    const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); const r = map.getBoundingClientRect();
+    zoomAt((a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top, d / pinch.d, false); pinch.d = d; moved += 10;
+  }
+});
+const endPtr = e => {
+  if (!ptrs.has(e.pointerId)) return;
+  ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null;
+  if (!ptrs.size) { map.classList.remove('drag'); if (moved < 5 && e.type === 'pointerup') select(null); }
+};
+map.addEventListener('pointerup', endPtr); map.addEventListener('pointercancel', endPtr);
+map.addEventListener('wheel', e => { e.preventDefault(); const r = map.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015), false); }, { passive:false });
+const center = () => { const r = map.getBoundingClientRect(); return [r.width / 2, r.height / 2]; };
+document.getElementById('zin').addEventListener('click', () => zoomAt(...center(), 1.4, true));
+document.getElementById('zout').addEventListener('click', () => zoomAt(...center(), 1 / 1.4, true));
+document.getElementById('zfit').addEventListener('click', () => fit(true));
+addEventListener('resize', () => fit(false));
+
+/* ---------- 컨트롤 ---------- */
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  state.filter = b.dataset.f;
+  if (state.sel && state.filter !== 'all' && byId(state.sel).kind !== state.filter) select(null); else renderMarkers();
+}));
+document.getElementById('mode').addEventListener('change', e => { state.mode = e.target.value; renderMarkers(); });
+document.getElementById('btnCmp').addEventListener('click', e => e.currentTarget.getAttribute('aria-pressed') === 'true' ? closeSheet() : openCompare());
+document.getElementById('btnInfo').addEventListener('click', e => e.currentTarget.getAttribute('aria-pressed') === 'true' ? closeSheet() : openInfo());
+document.getElementById('btnEdu').addEventListener('click', e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; setPressed('btnEdu', on); document.getElementById('app').classList.toggle('edu-off', !on); });
+document.getElementById('btnDev').addEventListener('click', e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; setPressed('btnDev', on); document.getElementById('zoneG').classList.toggle('zone-on', on); if (on) ensureVisible(1320, 720); });
+
+renderMarkers();
+fit(false);
+if (map.getBoundingClientRect().width >= 700) select('hello', false); else { areaEl.hello.classList.add('sel'); }
+})();
+</script>
