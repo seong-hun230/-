@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>오송역 84㎡ 비교지도</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;700;900&display=swap">
+<style>
+/* 1536×1024 상담용 인포그래픽: 상단 남색 타이틀 / 좌측 단지 카드 2장 / 우측 지도 / 하단 지표 카드 3장 / 남색 푸터 */
+:root{
+  --navy:#0d2f63; --navy-2:#163f7d; --ink:#1d2430; --ink-2:#4b5563; --line:#e3e7ee;
+  --orange:#f07d10; --orange-soft:#fff6ec; --teal:#13958f; --teal-soft:#eefaf9;
+  --cyan:#3fd6e8; --yellow:#ffd23f; --land:#eef0ec; --block:#e4e6e1; --bldg:#d3d6d0;
+  --road:#ffffff; --road-case:#d6d8d2; --artery:#ffe08a; --artery-case:#e8c45c; --park:#cfe8c4; --field:#e0edd5;
+  --rail:#9aa3ad; --ktx:#2e64d8; --zone:#7a5af0; --school:#d9e6f6;
+  --font:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#dfe4ec}
+body{font-family:var(--font);color:var(--ink);word-break:keep-all}
+.canvas{position:relative;width:1536px;height:1024px;background:#f3f5f8;overflow:hidden}
+
+/* 헤더 */
+.head{position:absolute;left:0;top:0;width:1536px;height:94px;background:linear-gradient(90deg,#0a2552 0%,#123d7c 60%,#0f3368 100%);display:flex;align-items:center;padding:0 34px}
+.head h1{margin:0;font-size:62px;font-weight:900;letter-spacing:-.02em;color:#fff;line-height:1;display:flex;align-items:center;gap:22px;white-space:nowrap}
+.head h1 .bar{width:5px;height:50px;background:rgba(255,255,255,.75);border-radius:2px}
+.head h1 .c{color:var(--cyan)} .head h1 .y{color:var(--yellow)}
+.head .tag{margin-left:auto;text-align:right;color:#fff;font-size:27px;font-weight:700;line-height:1.22;position:relative;z-index:1}
+.skyline{position:absolute;right:300px;bottom:0;opacity:.28}
+
+/* 단지 카드 */
+.card{position:absolute;left:16px;width:500px;background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(16,35,70,.10);border:1.5px solid var(--line);overflow:hidden;padding:18px 20px 10px 30px}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:8px}
+.card.b{top:104px;height:404px;border-color:#f6c897} .card.b::before{background:var(--orange)}
+.card.a{top:518px;height:420px;border-color:#a6dcd8} .card.a::before{background:var(--teal)}
+.ch{display:flex;gap:16px;align-items:center;padding-bottom:14px;border-bottom:1.5px solid var(--line)}
+.badge{flex:none;width:70px;height:70px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:44px;font-weight:900}
+.b .badge{background:var(--orange)} .a .badge{background:var(--teal)}
+.ch h2{margin:0;font-size:29px;font-weight:900;letter-spacing:-.03em;line-height:1.15}
+.ch p{margin:6px 0 0;font-size:19px;color:var(--ink-2);font-weight:500;letter-spacing:-.02em}
+.rows{display:grid}
+.row{display:grid;grid-template-columns:30px 112px 1fr;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:19px;letter-spacing:-.02em}
+.row:last-child{border-bottom:0}
+.row svg{width:24px;height:24px}
+.row .k{color:var(--ink);font-weight:500}
+.row .v{font-weight:500;color:var(--ink)}
+.row.price .v{font-size:46px;font-weight:900;letter-spacing:-.03em;line-height:1.05}
+.row.price .v small{font-size:24px;font-weight:900}
+.row.price .v i{display:block;font-style:normal;font-size:15px;font-weight:700;letter-spacing:0;margin-top:2px}
+.b .row.price .v{color:var(--orange)} .a .row.price .v{color:var(--teal)}
+.b .row.price .v i{color:#b45a07} .a .row.price .v i{color:#0d6f6a}
+.row .v .sm{display:block;font-size:16px;color:var(--ink-2)}
+
+/* 지도 */
+.map{position:absolute;left:526px;top:96px;width:1010px;height:674px;background:var(--land);overflow:hidden;border-left:1px solid var(--line)}
+.map svg.base{position:absolute;inset:0;width:100%;height:100%}
+.land{fill:var(--land)} .blk{fill:var(--block)} .bldg{fill:var(--bldg)} .street{fill:#fbfbf8} .park{fill:var(--park)} .field{fill:var(--field)} .school{fill:var(--school)}
+.area{fill:var(--block);stroke:#d2d5ce;stroke-width:1.5}
+.area.hl-a{fill:#cdeeea;stroke:var(--teal);stroke-width:4}
+.area.hl-b{fill:#ffe4c7;stroke:var(--orange);stroke-width:4}
+.rc{fill:none;stroke:var(--road-case);stroke-linecap:round;stroke-linejoin:round}
+.rd{fill:none;stroke:var(--road);stroke-linecap:round;stroke-linejoin:round}
+.ac{fill:none;stroke:var(--artery-case);stroke-linecap:round;stroke-linejoin:round}
+.ad{fill:none;stroke:var(--artery);stroke-linecap:round;stroke-linejoin:round}
+.rail{fill:none;stroke:var(--rail);stroke-width:7}
+.ktx{fill:none;stroke:var(--ktx);stroke-width:8}
+.gap{fill:none;stroke:#fff;stroke-width:3;stroke-dasharray:14 10}
+.zone{fill:var(--zone);fill-opacity:.06;stroke:var(--zone);stroke-width:3;stroke-dasharray:12 8}
+.rl{font:700 20px var(--font);fill:#4a6fb8;letter-spacing:.04em}
+.rl.g{fill:#7b838c}
+.lbl{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;text-align:center;font-size:17px;font-weight:700;color:#3d4652;line-height:1.25;
+  text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff,0 0 2px #fff;display:flex;flex-direction:column;align-items:center;gap:3px}
+.lbl .ic{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.lbl.big{font-size:30px;font-weight:900;color:#5b6470;letter-spacing:.02em}
+.lbl.zone-t{font-size:21px;font-weight:900;color:#5b3fd0}
+.lbl.sm{font-size:15px;font-weight:500}
+.pin{position:absolute;transform:translate(-50%,-100%)}
+.pin svg{display:block;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3))}
+.pill{position:absolute;transform:translateY(-50%);background:#fff;border-radius:30px;padding:9px 20px;font-size:22px;font-weight:900;white-space:nowrap;letter-spacing:-.03em;
+  box-shadow:0 3px 10px rgba(0,0,0,.18);line-height:1.2}
+.pill.b{border:3px solid var(--orange);transform:translate(-100%,-50%)} .pill.a{border:3px solid var(--teal)}
+.pill small{display:block;font-size:15px;font-weight:700;color:var(--ink-2);letter-spacing:0}
+.station{position:absolute;transform:translate(calc(-100% + 31px),-50%);display:flex;align-items:center}
+.station .ico{width:62px;height:62px;border-radius:50%;background:#fff;border:5px solid var(--navy);display:grid;place-items:center;z-index:1;box-shadow:0 3px 8px rgba(0,0,0,.25)}
+.station{flex-direction:row-reverse}
+.station .nm{background:var(--navy);color:#fff;font-size:28px;font-weight:900;padding:8px 34px 8px 22px;margin-right:-26px;border-radius:30px 0 0 30px;letter-spacing:-.02em;line-height:1.15;text-align:right}
+.mapnote{position:absolute;left:12px;bottom:10px;font-size:13px;color:#5b6470;background:rgba(255,255,255,.85);padding:4px 10px;border-radius:6px;font-weight:500}
+
+/* 하단 지표 */
+.stat{position:absolute;top:780px;height:158px;border-radius:14px;padding:18px 22px;display:flex;gap:16px;align-items:flex-start}
+.stat .t{font-size:22px;font-weight:900;letter-spacing:-.03em;line-height:1.3}
+.stat .n{font-size:42px;font-weight:900;letter-spacing:-.04em;line-height:1.1;margin-top:4px;white-space:nowrap}
+.stat .n small{font-size:26px}
+.stat .f{font-size:16px;color:var(--ink-2);margin-top:6px;letter-spacing:-.02em;font-weight:500}
+.s1{left:526px;width:334px;background:var(--orange-soft);border:1.5px solid #f6cf9f}
+.s1 .n{color:#c75f00}
+.s2{left:870px;width:318px;background:var(--teal-soft);border:1.5px solid #a6dcd8}
+.s2 .n{color:#0d6f6a}
+.s3{left:1198px;width:322px;background:#eaf0f8;border:1.5px solid #cdd8e8;align-items:center}
+.s3 p{margin:0;font-size:18.5px;font-weight:700;line-height:1.5;letter-spacing:-.03em;color:#26303d}
+.sic{flex:none;width:46px;height:46px;border-radius:50%;display:grid;place-items:center}
+
+/* 푸터 */
+.foot{position:absolute;left:0;bottom:0;width:1536px;height:74px;background:#0b2a5b;color:#dbe4f3;display:flex;align-items:center;padding:0 30px;gap:24px;font-size:17px;font-weight:500;white-space:nowrap}
+.foot .mid{margin-left:auto;margin-right:auto;font-size:16px;color:#b9c6dc}
+.foot .end{display:flex;align-items:center;gap:14px}
+.foot .end::before{content:"";width:46px;height:2px;background:#dbe4f3}
+</style>
+</head>
+<body>
+<div class="canvas" id="cv">
+
+  <header class="head">
+    <h1>오송역<span class="bar"></span><span><span class="c">84㎡</span><span class="y">끼리</span> 비교</span></h1>
+    <svg class="skyline" width="300" height="80" viewBox="0 0 300 80" aria-hidden="true"><path fill="#9cc4ff" d="M0 80V58h14V44h10v14h12V30h16v50h6V20h18v60h8V36h12v44h10V10h20v70h8V40h14v40h10V26h16v54h8V48h12v32h10V34h14v46h8V52h14v28z"/></svg>
+    <div class="tag">같은 생활권, 다른 가격<br>데이터로 보는 입지 비교</div>
+  </header>
+
+  <!-- B: 역 앞 -->
+  <section class="card b">
+    <div class="ch"><div class="badge">B</div><div><h2>오송역 헬로우시티 (C-17BL)</h2><p>오송역 바로 앞 · 지상 49층 주거복합</p></div></div>
+    <div class="rows">
+      <div class="row"><svg viewBox="0 0 24 24"><path d="M12 3 2 11h3v9h5v-6h4v6h5v-9h3z" fill="#1d2430"/></svg><span class="k">전용면적</span><span class="v">84㎡ 타입</span></div>
+      <div class="row"><svg viewBox="0 0 24 24"><path d="M5 2h14v20H5zM8 5v2h3V5zm5 0v2h3V5zM8 9v2h3V9zm5 0v2h3V9zm-5 4v2h3v-2zm5 0v2h3v-2zm-3 4v5h4v-5z" fill="#1d2430"/></svg><span class="k">사업단계</span><span class="v">조합원 모집 (공급 예정)</span></div>
+      <div class="row price"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3" fill="#f07d10"/><path d="M4 9c0 1.7 3.6 3 8 3s8-1.3 8-3v3c0 1.7-3.6 3-8 3s-8-1.3-8-3zm0 5c0 1.7 3.6 3 8 3s8-1.3 8-3v3c0 1.7-3.6 3-8 3s-8-1.3-8-3z" fill="#f07d10"/></svg><span class="k">공급가</span><span class="v">6억대<i>조합원 공급 예정가 · 시세 아님</i></span></div>
+      <div class="row"><svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6zm8 1v5h5M9 12h8M9 16h8" fill="none" stroke="#1d2430" stroke-width="2"/></svg><span class="k">규모</span><span class="v">아파트 480세대 + 오피스텔 36실</span></div>
+      <div class="row"><svg viewBox="0 0 24 24"><path d="M12 2c-3.9 0-7 3.1-7 7 0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" fill="#1d2430"/></svg><span class="k">입지특징</span><span class="v">오송역 메인 1열 (사업 브리핑 자료)</span></div>
+    </div>
+  </section>
+
+  <!-- A: 기존 단지 -->
+  <section class="card a">
+    <div class="ch"><div class="badge">A</div><div><h2>오송역 동아라이크텐</h2><p>오송역 서측 생활권 기존 비교 단지</p></div></div>
+    <div class="rows">
+      <div class="row"><svg viewBox="0 0 24 24"><path d="M12 3 2 11h3v9h5v-6h4v6h5v-9h3z" fill="#1d2430"/></svg><span class="k">전용면적</span><span class="v">84.99㎡ (33평형)</span></div>
+      <div class="row"><svg viewBox="0 0 24 24"><path d="M5 2h14v20H5zM8 5v2h3V5zm5 0v2h3V5zM8 9v2h3V9zm5 0v2h3V9zm-5 4v2h3v-2zm5 0v2h3v-2zm-3 4v5h4v-5z" fill="#1d2430"/></svg><span class="k">입주연도</span><span class="v">2020년 입주 · 970세대</span></div>
+      <div class="row price"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3" fill="#13958f"/><path d="M4 9c0 1.7 3.6 3 8 3s8-1.3 8-3v3c0 1.7-3.6 3-8 3s-8-1.3-8-3zm0 5c0 1.7 3.6 3 8 3s8-1.3 8-3v3c0 1.7-3.6 3-8 3s-8-1.3-8-3z" fill="#13958f"/></svg><span class="k">매매가</span><span class="v">4억 5,000<small>만원</small><i>매매 실거래</i></span></div>
+      <div class="row"><svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6zm8 1v5h5M9 12h8M9 16h8" fill="none" stroke="#1d2430" stroke-width="2"/></svg><span class="k">거래일</span><span class="v">2026.09.06 (33평형 매매)</span></div>
+      <div class="row"><svg viewBox="0 0 24 24"><path d="M12 2c-3.9 0-7 3.1-7 7 0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" fill="#1d2430"/></svg><span class="k">입지특징</span><span class="v">철도 건너편 서측 생활권<span class="sm">(역까지 실제 거리는 지도앱 확인)</span></span></div>
+    </div>
+  </section>
+
+  <!-- 지도 -->
+  <div class="map" id="map">
+    <svg class="base" id="base" viewBox="140 40 1520 1014" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+    <div id="labels"></div>
+    <div class="mapnote">위치 개략도 · 실제 축척·거리와 다를 수 있음</div>
+  </div>
+
+  <!-- 하단 지표 -->
+  <div class="stat s1">
+    <div class="sic" style="background:#fff"><svg width="30" height="30" viewBox="0 0 24 24"><path d="M3 20h4v-7H3zm7 0h4V8h-4zm7 0h4V3h-4z" fill="#f07d10"/></svg></div>
+    <div><div class="t">역 앞 공급가가</div><div class="n">1억 5,000<small>만원↑</small></div><div class="f">(6억대 하한 6억 − 4억 5,000만원)</div></div>
+  </div>
+  <div class="stat s2">
+    <div class="sic" style="background:#13958f"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M5 19 19 5M7 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg></div>
+    <div><div class="t">단지 <span style="color:#0d6f6a">A</span>는 <span style="color:#c75f00">B</span> 대비</div><div class="n">25%<small> 이상 낮음</small></div><div class="f">(4억 5,000만원 ÷ 6억원 − 1)</div></div>
+  </div>
+  <div class="stat s3">
+    <div class="sic" style="background:#3c4a5e"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M11 5h2v9h-2zm0 12h2v2h-2z" fill="#fff"/></svg></div>
+    <p>B는 공급 예정가, A는 실거래가입니다. 연식·층수·상품 구성·사업 단계 차이를 함께 보셔야 합니다.</p>
+  </div>
+
+  <footer class="foot">
+    <span>자료: 집품·리치고 실거래(국토부 재가공) · 헬로우시티 상담 브리핑 자료 · 2026.10.14 확인</span>
+    <span class="mid">상담용 비교 이미지 · 세부 조건은 원자료 확인</span>
+    <span class="end">더 나은 주거 선택을 위해, 데이터를 봅니다.</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+const NS = 'http://www.w3.org/2000/svg', svg = document.getElementById('base');
+const el = (t, a, p = svg) => { const n = document.createElementNS(NS, t); for (const k in a) n.setAttribute(k, a[k]); p.appendChild(n); return n; };
+const path = pts => 'M' + pts.map(p => p.join(',')).join('L');
+const poly = pts => path(pts) + 'Z';
+const defs = el('defs', {});
+const pat = (id, w, h, bw, bh, cls, rot) => { const p = el('pattern', { id, width:w, height:h, patternUnits:'userSpaceOnUse', patternTransform:`rotate(${rot})` }, defs); el('rect', { x:(w-bw)/2, y:(h-bh)/2, width:bw, height:bh, rx:3, class:cls }, p); };
+pat('cgrid', 70, 46, 58, 34, 'blk', -38); pat('zgrid', 96, 70, 82, 56, 'blk', -8); pat('vgrid', 52, 40, 42, 30, 'blk', 6);
+
+el('rect', { x:0, y:0, width:1800, height:1200, class:'land' });
+[[40,140,250,270],[1250,40,1680,250],[1420,300,1680,460],[700,950,1040,1090],[1180,950,1680,1090],[1600,500,1700,900]].forEach(b => el('rect', { x:b[0], y:b[1], width:b[2]-b[0], height:b[3]-b[1], rx:18, class:'field' }));
+el('rect', { x:20, y:945, width:620, height:140, rx:10, class:'street' }); el('rect', { x:20, y:945, width:620, height:140, rx:10, fill:'url(#vgrid)' });
+const cPoly = [[470,200],[600,185],[900,330],[1040,460],[900,540],[700,560],[560,480],[470,380]];
+el('path', { d:poly(cPoly), class:'street' }); el('path', { d:poly(cPoly), fill:'url(#cgrid)' });
+const zPoly = [[1060,610],[1200,560],[1460,540],[1570,650],[1570,905],[1090,905]];
+el('path', { d:poly(zPoly), class:'street' }); el('path', { d:poly(zPoly), fill:'url(#zgrid)' });
+el('rect', { x:110, y:500, width:150, height:130, rx:16, class:'park' });
+[[450,118,560,180],[575,215,660,280],[290,575,390,628],[1080,935,1170,1000]].forEach(b => el('rect', { x:b[0], y:b[1], width:b[2]-b[0], height:b[3]-b[1], rx:8, class:'school' }));
+
+const AREAS = { paragon1:[300,175,470,290], paragon2:[120,335,335,470], jeil:[275,480,395,560], donga:[120,680,395,880], seohan:[430,680,625,880],
+  centum:[635,715,755,880], daegwang:[775,575,905,695], hill:[900,785,1075,895], hello:[1255,560,1345,640] };
+for (const id in AREAS) {
+  const [x1,y1,x2,y2] = AREAS[id];
+  el('rect', { x:x1, y:y1, width:x2-x1, height:y2-y1, rx:12, class:'area' + (id === 'donga' ? ' hl-a' : id === 'hello' ? ' hl-b' : '') });
+  const cw = 34, rh = 30, bw = 24, bh = 9, cols = Math.max(1, Math.floor((x2-x1-16)/cw)), rows = Math.max(1, Math.floor((y2-y1-16)/rh));
+  const ox = x1 + ((x2-x1) - cols*cw)/2 + (cw-bw)/2, oy = y1 + ((y2-y1) - rows*rh)/2 + (rh-bh)/2;
+  for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) el('rect', { x:ox + k*cw, y:oy + r*rh, width:bw, height:bh, rx:2, class:'bldg' });
+}
+const ROADS = [
+  { w:30, a:1, p:[[0,300],[260,300],[520,470],[760,700],[880,900],[930,1100]] },
+  { w:22, a:1, p:[[0,645],[300,650],[725,660]] },
+  { w:24, a:1, p:[[0,920],[1700,905]] },
+  { w:16, p:[[410,0],[412,300],[418,660],[420,1100]] },
+  { w:16, p:[[620,0],[700,140],[900,330],[1050,470],[1160,520]] },
+  { w:14, p:[[0,95],[400,100],[600,110],[700,140]] },
+  { w:16, p:[[1240,525],[1460,540],[1700,520]] },
+  { w:12, p:[[1060,610],[1090,905]] },
+  { w:10, p:[[1250,40],[1300,300],[1360,400]] },
+  { w:10, p:[[700,560],[760,700]] },
+];
+ROADS.forEach(r => el('path', { d:path(r.p), class:r.a ? 'ac' : 'rc', 'stroke-width':r.w + 5 }));
+ROADS.forEach(r => el('path', { d:path(r.p), class:r.a ? 'ad' : 'rd', 'stroke-width':r.w }));
+el('path', { d:poly(zPoly), class:'zone' });
+const RAILS = [
+  { c:'ktx', id:'r-ktx', p:[[980,0],[1080,250],[1150,430],[1190,560],[1260,800],[1330,1100]] },
+  { c:'ktx', p:[[1012,0],[1112,250],[1182,430],[1222,560],[1292,800],[1362,1100]] },
+  { c:'rail', id:'r-cb', p:[[560,1100],[700,950],[880,760],[1060,600],[1180,510],[1360,400],[1700,260]] },
+  { c:'rail', p:[[588,1100],[726,958],[904,772],[1082,614],[1200,526],[1376,420],[1700,284]] },
+  { c:'rail', p:[[760,0],[900,170],[1040,320],[1150,430]] },
+];
+RAILS.forEach(r => { const a = { d:path(r.p), class:r.c }; if (r.id) a.id = r.id; el('path', a); el('path', { d:path(r.p), class:'gap' }); });
+const rt = (href, txt, off, cls) => { const t = el('text', { class:'rl' + (cls ? ' ' + cls : ''), dy:-12 }); const tp = el('textPath', { href, startOffset:off }, t); tp.textContent = txt; };
+rt('#r-ktx', '경부 · 호남고속선', '8%'); rt('#r-ktx', '경부 · 호남고속선', '74%'); rt('#r-cb', '충북선', '16%', 'g'); rt('#r-cb', '충북선', '86%', 'g');
+
+/* HTML 라벨 (지도 좌표 → 화면 좌표) */
+const box = document.getElementById('map'), VB = [140, 40, 1520, 1014];
+const k = Math.max(box.clientWidth / VB[2], box.clientHeight / VB[3]);
+const ox = (box.clientWidth - VB[2]*k) / 2, oy = (box.clientHeight - VB[3]*k) / 2;
+const P = (x, y) => [ox + (x - VB[0])*k, oy + (y - VB[1])*k];
+const L = document.getElementById('labels');
+const add = (html, x, y, cls, extra = {}) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; const [sx, sy] = P(x, y); d.style.left = sx + 'px'; d.style.top = sy + 'px'; Object.assign(d.style, extra); L.appendChild(d); return d; };
+const IC = {
+  apt:'<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M4 21V5l8-3 8 3v16h-6v-5h-4v5z" fill="#6b7480"/></svg></span>',
+  sch:'<span class="ic"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3 1 9l11 6 9-4.9V17h2V9z" fill="#2e64d8"/></svg></span>',
+  park:'<span class="ic" style="background:#2e9d4e"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 2 5 12h4l-3 5h5v5h2v-5h5l-3-5h4z" fill="#fff"/></svg></span>',
+  cine:'<span class="ic"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM9 8v8l7-4z" fill="#6b7480"/></svg></span>',
+};
+add('오송역세권<br>도시개발구역', 1455, 745, 'lbl zone-t');
+add(IC.sch + '오송2고등학교<br>(2028년 3월 예정)', 505, 150, 'lbl sm');
+add(IC.sch + '오송솔미초', 618, 248, 'lbl sm');
+add(IC.sch + '솔강초', 340, 602, 'lbl sm');
+add(IC.sch + '오송초', 1125, 968, 'lbl sm');
+add(IC.park + '정중공원', 185, 565, 'lbl sm');
+add(IC.cine + '롯데시네마', 655, 512, 'lbl sm');
+add(IC.apt + '오송역 파라곤<br>센트럴시티', 385, 232, 'lbl sm');
+add(IC.apt + '파라곤 2차', 228, 400, 'lbl sm');
+add(IC.apt + '서한이다음<br>노블리스', 528, 790, 'lbl sm');
+add(IC.apt + '대광로제비앙<br>그랜드센텀', 695, 800, 'lbl sm');
+add(IC.apt + '오송역<br>대광로제비앙', 840, 632, 'lbl sm');
+add(IC.apt + '힐스테이트<br>오송역퍼스트', 988, 838, 'lbl sm');
+
+/* 오송역 */
+add('<div class="ico"><svg width="32" height="32" viewBox="0 0 24 24"><path d="M12 2c-4 0-8 .5-8 4v9.5A3.5 3.5 0 0 0 7.5 19L6 20.5v.5h12v-.5L16.5 19a3.5 3.5 0 0 0 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3.5-7H6V6h5zm5.5 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm1.5-7h-5V6h5z" fill="#0d2f63"/></svg></div><div class="nm">오송역<br><span style="font-size:15px;font-weight:700">KTX · SRT</span></div>', 1185, 470, 'station');
+
+/* A·B 핀 */
+const pinSvg = (c, t) => `<svg width="66" height="86" viewBox="0 0 66 86"><path d="M33 84C33 84 4 50 4 31a29 29 0 0 1 58 0c0 19-29 53-29 53z" fill="${c}" stroke="#fff" stroke-width="4"/><text x="33" y="44" text-anchor="middle" font-family="Noto Sans KR,sans-serif" font-size="34" font-weight="900" fill="#fff">${t}</text></svg>`;
+add(pinSvg('#f07d10', 'B'), 1300, 590, 'pin');
+add(pinSvg('#13958f', 'A'), 258, 742, 'pin');
+const pb = add('오송역 헬로우시티<small>C-17BL · 지상 49층 (공급 예정)</small>', 1262, 715, 'pill b');
+const pa = add('오송역 동아라이크텐<small>2020년 입주 · 970세대</small>', 300, 700, 'pill a');
+})();
+</script>
+</body>
+</html>
