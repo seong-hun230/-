@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>블로그 → 릴스</title>
+<style>
+:root{
+  --bg:#f5f5f7; --card:#fff; --ink:#111; --sub:#666; --line:#e3e3e8;
+  --accent:#ffd43b; --accent-ink:#111; --ok:#1a8f4a; --warn:#c2410c; --code:#f0f0f3;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0f0f12; --card:#1a1a1f; --ink:#f2f2f5; --sub:#a0a0aa; --line:#2c2c34;
+         --ok:#4ade80; --warn:#fb923c; --code:#121216; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;line-height:1.5}
+.wrap{max-width:1080px;margin:0 auto;padding:24px 16px 80px}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:-.02em}
+h1 b{background:var(--accent);color:var(--accent-ink);padding:0 8px;border-radius:8px}
+.lead{color:var(--sub);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px}
+label.t{display:block;font-weight:700;font-size:14px;margin:14px 0 6px}
+input[type=text],input[type=password],select,textarea{width:100%;font:inherit;color:var(--ink);
+  background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px}
+textarea{font-family:ui-monospace,Consolas,"D2Coding",monospace;font-size:13px;min-height:320px;background:var(--code)}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;min-width:64px}
+button{font:inherit;font-weight:700;border:1px solid var(--line);background:var(--card);color:var(--ink);
+  border-radius:10px;padding:10px 14px;cursor:pointer}
+button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button.go{background:var(--accent);color:var(--accent-ink);border:none;font-size:18px;padding:16px;width:100%;margin-top:18px}
+button:disabled{opacity:.5;cursor:default}
+.hint{font-size:13px;color:var(--sub);margin-top:6px}
+.bar{height:12px;background:var(--line);border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .4s}
+.log{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--sub);max-height:150px;overflow:auto;margin-top:10px;white-space:pre-wrap}
+.result{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:20px}
+@media (max-width:760px){.result{grid-template-columns:1fr}}
+video{width:100%;aspect-ratio:9/16;background:#000;border-radius:14px}
+.dl{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.dl a{text-decoration:none;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px;font-weight:700}
+.checks{list-style:none;padding:0;margin:0}
+.checks li{padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.checks .ok::before{content:"✓ ";color:var(--ok);font-weight:900}
+.checks .no::before{content:"! ";color:var(--warn);font-weight:900}
+.checks small{color:var(--sub);display:block}
+img.sheet{width:100%;border-radius:10px;border:1px solid var(--line)}
+details summary{cursor:pointer;font-weight:700;padding:6px 0}
+.hidden{display:none}
+.err{color:var(--warn);font-weight:700;margin-top:8px}
+.jobs a{display:block;color:var(--ink);padding:6px 0;border-bottom:1px solid var(--line);text-decoration:none;font-size:14px}
+code{background:var(--code);padding:1px 6px;border-radius:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>블로그 → <b>릴스</b> 자동 제작</h1>
+  <p class="lead">블로그 글 주소만 넣으면 내용을 분석해 9:16 릴스 영상 · 커버 · 캡션까지 만들어 드립니다.</p>
+
+  <div class="card">
+    <label class="t" for="url">블로그 글 주소</label>
+    <input id="url" type="text" placeholder="https://blog.naver.com/아이디/글번호  (티스토리·워드프레스·일반 웹글도 가능)">
+    <div class="row">
+      <div>
+        <label class="t">영상 길이</label>
+        <div class="seg" id="len">
+          <button data-v="15">15초</button><button data-v="20" class="on">20초</button><button data-v="30">30초</button>
+        </div>
+      </div>
+      <div>
+        <label class="t" for="grade">색감</label>
+        <select id="grade">
+          <option value="bright" selected>밝게 (bright)</option><option value="clean">깔끔 (clean)</option>
+          <option value="warm">따뜻 (warm)</option><option value="cine">시네마 (cine)</option><option value="punch">선명 (punch)</option>
+        </select>
+      </div>
+      <div>
+        <label class="t" for="bgm">배경음악</label>
+        <select id="bgm">
+          <option value="energetic" selected>신나는 (energetic)</option><option value="trendy">트렌디 (trendy)</option>
+          <option value="emotional">감성 (emotional)</option><option value="cinematic">웅장 (cinematic)</option>
+        </select>
+      </div>
+    </div>
+    <details style="margin-top:14px">
+      <summary>고급 설정 (AI 분석 · 효과)</summary>
+      <div class="row">
+        <div>
+          <label class="t" for="engine">분석 방식</label>
+          <select id="engine">
+            <option value="auto" selected>자동 (API 키 있으면 Claude)</option>
+            <option value="claude">Claude AI 분석 (권장 · 사진을 보고 자막을 맞춤)</option>
+            <option value="rule">규칙 기반 (무료 · 검수 필수)</option>
+          </select>
+        </div>
+        <div>
+          <label class="t" for="key">Claude API 키 (선택)</label>
+          <input id="key" type="password" placeholder="sk-ant-…  (저장되지 않음)">
+        </div>
+        <div>
+          <label class="t">효과</label>
+          <label><input type="checkbox" id="fx" checked> 줌 펀치 · 셰이크 · 비네트</label>
+        </div>
+      </div>
+      <p class="hint">API 키를 넣지 않아도 만들 수 있습니다(규칙 기반). 키는 이 컴퓨터 메모리에서만 쓰이고 파일로 저장되지 않습니다.</p>
+    </details>
+    <button class="go" id="go">릴스 자동 제작</button>
+    <div class="err hidden" id="err"></div>
+  </div>
+
+  <div class="card hidden" id="prog">
+    <div class="bar"><i id="barfill"></i></div>
+    <div class="log" id="log"></div>
+  </div>
+
+  <div class="hidden" id="out">
+    <div class="card result">
+      <div>
+        <video id="video" controls playsinline loop></video>
+        <div class="dl" id="dl"></div>
+      </div>
+      <div>
+        <h3 style="margin:0 0 8px">자동 검수 결과</h3>
+        <ul class="checks" id="checks"></ul>
+        <h3 style="margin:18px 0 8px">캡션 (복사해서 붙여넣기)</h3>
+        <textarea id="caption" style="min-height:180px;font-family:inherit"></textarea>
+        <button id="copy" style="margin-top:8px">캡션 복사</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 6px">검수 시트 — 컷마다 “자막이 화면에 실제로 보이는가” 확인</h3>
+      <img class="sheet" id="vsheet" alt="검수 시트">
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 6px">스토리보드 수정 → 다시 렌더</h3>
+      <p class="hint">줄마다 <code>사진번호 | 길이 | 자막(/ 로 조각) | 옵션</code>. 자막과 사진이 안 맞으면 <b>사진 번호만 바꾸면</b> 됩니다.
+        옵션: <code>hook</code> <code>loop</code> <code>cta</code> <code>chapter=이름</code> <code>trans=whip|flash|glitch|zoomblur</code> <code>zoom=in|out</code>.
+        사진이 없으면 <code>card</code> (텍스트 카드). 숫자·[대괄호] 글자는 노란색으로 강조됩니다.</p>
+      <textarea id="sb"></textarea>
+      <button class="go" id="rerender">수정한 스토리보드로 다시 만들기</button>
+      <details style="margin-top:14px"><summary>블로그 사진 번호표 (컨택트시트)</summary>
+        <img class="sheet" id="csheet" alt="컨택트시트"></details>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 6px">최근 작업</h3>
+    <div class="jobs" id="jobs"></div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let LEN = 20, JOB = null, timer = null;
+document.querySelectorAll('#len button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#len button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); LEN = +b.dataset.v;
+});
+try { $('#url').value = localStorage.getItem('b2r_url') || ''; } catch (e) {}
+
+function opts(){
+  return {length: LEN, grade: $('#grade').value, bgm: $('#bgm').value,
+          engine: $('#engine').value, api_key: $('#key').value.trim(), fx: $('#fx').checked};
+}
+function showErr(m){ const e = $('#err'); e.textContent = m; e.classList.toggle('hidden', !m); }
+function busy(on){ $('#go').disabled = on; $('#rerender').disabled = on; }
+
+async function post(path, body){
+  const r = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || '요청 실패');
+  return j;
+}
+
+$('#go').onclick = async () => {
+  const url = $('#url').value.trim();
+  if (!url) return showErr('블로그 주소를 입력하세요.');
+  try { localStorage.setItem('b2r_url', url); } catch (e) {}
+  showErr(''); busy(true);
+  $('#out').classList.add('hidden');
+  try { const j = await post('/api/start', {url, ...opts()}); JOB = j.job; poll(); }
+  catch (e) { showErr(e.message); busy(false); }
+};
+$('#rerender').onclick = async () => {
+  if (!JOB) return;
+  busy(true);
+  try { const o = opts(); delete o.api_key;
+        await post('/api/rerender', {job: JOB, storyboard: $('#sb').value, ...o}); poll(); }
+  catch (e) { showErr(e.message); busy(false); }
+};
+$('#copy').onclick = () => { navigator.clipboard.writeText($('#caption').value); $('#copy').textContent = '복사됨'; setTimeout(()=>$('#copy').textContent='캡션 복사',1500); };
+
+function poll(){
+  $('#prog').classList.remove('hidden');
+  clearTimeout(timer);
+  const tick = async () => {
+    const r = await fetch('/api/status?job=' + encodeURIComponent(JOB));
+    const s = await r.json();
+    $('#barfill').style.width = (s.progress || 0) + '%';
+    $('#log').textContent = (s.log || []).join('\n');
+    $('#log').scrollTop = 1e9;
+    if (s.state === 'running') { timer = setTimeout(tick, 1000); return; }
+    busy(false);
+    if (s.state === 'error') { showErr('실패: ' + s.error); return; }
+    show(s); loadJobs();
+  };
+  tick();
+}
+
+function f(name, dl){ return '/files/' + encodeURIComponent(JOB) + '/' + encodeURIComponent(name) + (dl ? '?dl=1' : '?t=' + Date.now()); }
+
+function show(s){
+  const fl = s.files || {};
+  $('#out').classList.remove('hidden');
+  if (fl.video) $('#video').src = f(fl.video);
+  const links = [];
+  if (fl.video) links.push(['영상 받기 (mp4)', fl.video]);
+  if (fl.cover) links.push(['커버 이미지', fl.cover]);
+  if (fl['캡션_복붙용.txt']) links.push(['캡션 txt', '캡션_복붙용.txt']);
+  if (fl['storyboard.txt']) links.push(['스토리보드', 'storyboard.txt']);
+  $('#dl').innerHTML = links.map(([t, n]) => `<a href="${f(n, 1)}">${t}</a>`).join('');
+  const rep = s.report || {};
+  $('#checks').innerHTML = (rep.checks || []).map(c =>
+    `<li class="${c.ok ? 'ok' : 'no'}">${esc(c.label)}${c.detail ? `<small>${esc(c.detail)}</small>` : ''}</li>`).join('')
+    + (rep.warnings || []).map(w => `<li class="no">분석 메모<small>${esc(w)}</small></li>`).join('');
+  $('#caption').value = s.caption || '';
+  $('#sb').value = s.storyboard || '';
+  if (fl['검수시트.jpg']) $('#vsheet').src = f('검수시트.jpg');
+  if (fl['컨택트시트.jpg']) $('#csheet').src = f('컨택트시트.jpg');
+}
+function esc(t){ return String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function loadJobs(){
+  const r = await fetch('/api/jobs'); const js = await r.json();
+  $('#jobs').innerHTML = js.filter(j => j.files.video).map(j =>
+    `<a href="#" data-j="${esc(j.job)}">${esc(j.job)} — ${esc(j.files.video)}</a>`).join('') || '<span class="hint">아직 없습니다</span>';
+  document.querySelectorAll('#jobs a').forEach(a => a.onclick = e => { e.preventDefault(); JOB = a.dataset.j; poll(); window.scrollTo(0, 0); });
+}
+loadJobs();
+</script>
+</body>
+</html>
