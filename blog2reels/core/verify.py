@@ -126,7 +126,7 @@ def subtitle_visible_at_zero(video):
     im = extract_frame(video, 0.0)
     a = np.asarray(im).astype(np.int16)
     h = a.shape[0]
-    band = a[int(h * 0.38): int(h * 0.62)]
+    band = a[int(h * 0.30): int(h * 0.82)]          # 세로·가로 레이아웃 자막 위치 모두 포함
     white = ((band > 235).all(axis=2)).mean()
     dark = ((band < 25).all(axis=2)).mean()
     return white > 0.004 and dark > 0.004

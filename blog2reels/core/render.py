@@ -86,7 +86,9 @@ def build_canvas(img_path, grade_mode, fx=True):
         center = 0.46 if tall else WIDE_CENTER
         max_h = 0.80 if tall else WIDE_MAX_H
         bg = cover(im, (CW // 4, CH // 4)).filter(ImageFilter.GaussianBlur(10))
-        bg = ImageEnhance.Brightness(bg.resize((CW, CH), Image.BILINEAR)).enhance(0.55)
+        lum = np.asarray(im.convert("L").resize((64, 64))).mean()
+        dim = 0.55 if lum > 90 else (0.8 if lum > 45 else 1.0)   # 어두운 이미지는 덜 어둡게(검은 띠처럼 보이지 않게)
+        bg = ImageEnhance.Brightness(bg.resize((CW, CH), Image.BILINEAR)).enhance(dim)
         fw = int(CW * 0.98)
         fh = int(fw / ar)
         if fh > CH * max_h:
