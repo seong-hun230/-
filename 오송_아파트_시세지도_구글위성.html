@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>오송 아파트 시세지도 (위성)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+/* Layout: 실제 Google 위성지도 전체 화면 + 상단 필터 칩, 우측 도구, 좌측(모바일은 하단) 상세 시트 */
+:root {
+  --ink:#1b1f24; --ink-2:#4a515a; --ink-3:#7a818a; --panel:#ffffff; --panel-2:#f4f5f7; --line:#e2e4e7;
+  --navy:#1c2a3a; --on-navy:#ffffff; --green:#0f9f55; --green-soft:#e4f6ec; --blue:#2c67d1; --blue-soft:#e8effc;
+  --violet:#6a43e3; --violet-soft:#efe9ff; --amber:#a86a12; --amber-soft:#fcf1de; --red:#c62828;
+  --shadow:0 2px 10px rgba(0,0,0,.28); --veil:rgba(255,255,255,.85); --bg:#1d2329;
+  --font:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+* { box-sizing:border-box }
+html,body { height:100%; margin:0 }
+[hidden] { display:none !important }
+body { background:var(--bg); color:var(--ink); font:14px/1.45 var(--font); overflow:hidden }
+button,select,input { font-family:inherit; color:inherit }
+button:focus-visible,select:focus-visible,input:focus-visible { outline:2px solid var(--violet); outline-offset:2px }
+.app { position:relative; height:100% }
+#gmap { position:absolute; inset:0; background:var(--bg) }
+
+/* 마커 */
+.mk { display:flex; flex-direction:column; align-items:center; border:0; background:none; padding:0; cursor:pointer;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.45)); transform:translateY(2px) }
+.mk::after { content:""; width:0; height:0; border:7px solid transparent; border-top-color:var(--navy); border-bottom:0; margin-top:-1px }
+.mk-tag { background:var(--navy); color:var(--on-navy); font-size:11.5px; font-weight:500; line-height:1; padding:4px 8px 3px; border-radius:5px 5px 0 0 }
+.mk-body { background:var(--panel); border:2px solid var(--navy); border-radius:7px; padding:4px 10px; font-size:15px; font-weight:800;
+  white-space:nowrap; line-height:1.2; font-variant-numeric:tabular-nums; color:var(--ink) }
+.mk-body em { font-style:normal; font-weight:700; margin-right:4px }
+.mk-name { margin-top:3px; font-size:12px; font-weight:700; color:#fff; white-space:nowrap;
+  text-shadow:0 0 3px #000,0 0 3px #000,0 1px 2px #000; order:3 }
+.sale .mk-body em { color:var(--green) } .rent .mk-body em { color:var(--blue) } .plan .mk-body em { color:var(--violet) }
+.plan .mk-tag { background:var(--violet) } .plan .mk-body { border-color:var(--violet); background:var(--violet-soft) } .plan.mk::after { border-top-color:var(--violet) }
+.mk.on .mk-body { outline:3px solid #ffd43b; outline-offset:1px }
+.mk.stale .mk-tag::after { content:" ·25년"; opacity:.8 }
+.mk .est { display:none }
+.mk.estimated .est { display:inline; margin-left:4px; font-size:10px; font-weight:500; opacity:.85 }
+.editing .mk { cursor:move }
+.editing .mk-body { border-style:dashed }
+
+/* 팝업 */
+.pop { width:250px; margin-bottom:76px; background:var(--panel); border-radius:10px; box-shadow:0 8px 26px rgba(0,0,0,.4); overflow:hidden; cursor:default }
+.pop-h { background:var(--navy); color:var(--on-navy); display:flex; align-items:center; gap:6px; padding:10px 8px 10px 14px }
+.pop-h strong { flex:1; min-width:0; font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.pop-h button { border:0; background:none; color:var(--on-navy); font-size:18px; line-height:1; cursor:pointer; padding:2px 6px }
+.pop-b { padding:12px 14px; display:grid; gap:4px }
+.pop-price { font-size:17px; font-weight:800; font-variant-numeric:tabular-nums }
+.pop-price em { font-style:normal; margin-right:6px; font-weight:700; font-size:15px }
+.pop-sub { font-size:12px; color:var(--ink-3) }
+.pop-note { font-size:12px; color:var(--ink-2) }
+.pop-warn { font-size:11.5px; color:var(--amber) }
+.pop-btns { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; padding:0 10px 10px }
+.pop-btns button { border:0; background:var(--panel-2); border-radius:6px; padding:7px 0; font-size:12.5px; cursor:pointer }
+.pop-btns button:hover { background:var(--line) }
+
+/* 상단·우측 도구 */
+.top { position:absolute; left:12px; right:68px; top:calc(12px + env(safe-area-inset-top,0px)); display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; padding:2px; z-index:5 }
+.top::-webkit-scrollbar { display:none }
+.chip { flex:none; height:40px; display:inline-flex; align-items:center; gap:6px; padding:0 15px; border-radius:20px; background:var(--panel);
+  border:1px solid var(--line); box-shadow:var(--shadow); font-size:14.5px; font-weight:500; white-space:nowrap }
+.chip.loc { font-weight:700; gap:8px }
+.seg { flex:none; display:inline-flex; height:40px; border-radius:20px; background:var(--panel); border:1px solid var(--line); box-shadow:var(--shadow); padding:3px; gap:2px }
+.seg button { border:0; background:none; border-radius:17px; padding:0 13px; font-size:14px; font-weight:500; cursor:pointer; color:var(--ink-2) }
+.seg button[aria-pressed="true"] { background:var(--navy); color:var(--on-navy); font-weight:700 }
+select.chip { appearance:none; -webkit-appearance:none; cursor:pointer; padding-right:32px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink-2) 50%),linear-gradient(135deg,var(--ink-2) 50%,transparent 50%);
+  background-position:calc(100% - 17px) 17px,calc(100% - 12px) 17px; background-size:5px 5px; background-repeat:no-repeat }
+.tools { position:absolute; right:calc(10px + env(safe-area-inset-right,0px)); top:calc(12px + env(safe-area-inset-top,0px)); display:flex; flex-direction:column; gap:8px; z-index:5 }
+.tool { width:50px; min-height:52px; border:1px solid var(--line); background:var(--panel); border-radius:10px; box-shadow:var(--shadow);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-size:11.5px; cursor:pointer; padding:5px 0 }
+.tool svg { width:20px; height:20px }
+.tool[aria-pressed="true"] { background:var(--navy); color:var(--on-navy); border-color:var(--navy) }
+.tool.brand { background:var(--green); color:#fff; border-color:var(--green); font-weight:700; border-radius:50%; width:50px; min-height:50px; font-size:12px }
+.count { position:absolute; left:calc(14px + env(safe-area-inset-left,0px)); bottom:calc(34px + env(safe-area-inset-bottom,0px)); display:flex; align-items:center;
+  background:var(--panel); border:1.5px solid var(--green); border-radius:30px; box-shadow:var(--shadow); height:50px; padding:0 6px; z-index:4 }
+.count span { padding:0 16px; font-size:14.5px; font-weight:700; white-space:nowrap }
+.count b { color:var(--green); font-weight:800; margin-left:6px; font-variant-numeric:tabular-nums }
+.count i { width:1px; height:22px; background:var(--line) }
+.zoom { position:absolute; right:calc(14px + env(safe-area-inset-right,0px)); bottom:calc(34px + env(safe-area-inset-bottom,0px)); display:flex; gap:8px; z-index:4 }
+.zoom .grp { display:flex; background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); overflow:hidden }
+.zoom button { width:46px; height:46px; border:0; background:none; font-size:24px; cursor:pointer; display:grid; place-items:center }
+.zoom .solo { background:var(--panel); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow) }
+.legend { position:absolute; left:calc(14px + env(safe-area-inset-left,0px)); bottom:calc(94px + env(safe-area-inset-bottom,0px)); display:flex; gap:10px;
+  background:var(--veil); border-radius:8px; padding:6px 10px; font-size:12px; color:var(--ink-2); z-index:3 }
+.legend span { display:inline-flex; align-items:center; gap:5px }
+.legend i { width:9px; height:9px; border-radius:2px }
+.toast { position:absolute; left:50%; top:66px; transform:translateX(-50%); background:var(--navy); color:var(--on-navy); padding:9px 16px; border-radius:20px;
+  font-size:13px; box-shadow:var(--shadow); z-index:7; max-width:calc(100% - 32px); text-align:center }
+.editbar { position:absolute; left:50%; bottom:calc(96px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); z-index:7; display:flex; gap:8px; align-items:center;
+  background:var(--panel); border-radius:12px; padding:8px 10px 8px 14px; box-shadow:var(--shadow); font-size:13px; max-width:calc(100% - 24px); flex-wrap:wrap; justify-content:center }
+.editbar button { border:0; border-radius:8px; padding:8px 12px; font-size:13px; cursor:pointer; background:var(--panel-2) }
+.editbar button.pri { background:var(--navy); color:var(--on-navy); font-weight:700 }
+
+/* 상세 시트 */
+.sheet { position:absolute; left:calc(12px + env(safe-area-inset-left,0px)); top:calc(64px + env(safe-area-inset-top,0px)); bottom:calc(96px + env(safe-area-inset-bottom,0px));
+  width:360px; max-width:calc(100% - 84px); background:var(--panel); border-radius:14px; box-shadow:0 8px 28px rgba(0,0,0,.35); z-index:6; display:flex; flex-direction:column; overflow:hidden }
+.sh-h { display:flex; align-items:flex-start; gap:8px; padding:16px 12px 12px 18px; border-bottom:1px solid var(--line) }
+.sh-h h2 { flex:1; min-width:0; margin:0; font-size:18px; font-weight:800; line-height:1.35; text-wrap:balance }
+.sh-h button { border:0; background:var(--panel-2); border-radius:8px; width:32px; height:32px; font-size:18px; cursor:pointer; flex:none }
+.sh-c { overflow-y:auto; padding:14px 18px 20px; display:grid; gap:14px; align-content:start }
+.tags { display:flex; flex-wrap:wrap; gap:6px }
+.tag { font-size:12px; font-weight:500; padding:3px 8px; border-radius:5px; background:var(--panel-2); color:var(--ink-2) }
+.tag.sale { background:var(--green-soft); color:var(--green) } .tag.rent { background:var(--blue-soft); color:var(--blue) }
+.tag.plan { background:var(--violet-soft); color:var(--violet) } .tag.warn { background:var(--amber-soft); color:var(--amber) }
+.big { display:grid; gap:2px }
+.big .lbl { font-size:12.5px; color:var(--ink-3) }
+.big .val { font-size:26px; font-weight:800; font-variant-numeric:tabular-nums }
+.big .val em { font-style:normal; font-size:16px; margin-right:6px }
+.big .rng { font-size:13px; color:var(--ink-2) }
+.tabs { display:flex; border-bottom:1px solid var(--line) }
+.tabs button { flex:1; border:0; background:none; padding:10px 0; font-size:14px; cursor:pointer; color:var(--ink-3); border-bottom:2px solid transparent; margin-bottom:-1px }
+.tabs button[aria-selected="true"] { color:var(--ink); font-weight:700; border-bottom-color:var(--ink) }
+table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums }
+th,td { text-align:left; padding:8px 4px; border-bottom:1px solid var(--line); vertical-align:top }
+th { font-weight:500; color:var(--ink-3); font-size:12px }
+td.r,th.r { text-align:right; white-space:nowrap } td.r { font-weight:700 }
+dl { margin:0; display:grid; grid-template-columns:88px 1fr; gap:8px 10px; font-size:13.5px }
+dt { color:var(--ink-3) } dd { margin:0; min-width:0 }
+ul.notes { margin:0; padding-left:18px; display:grid; gap:6px; font-size:13px; color:var(--ink-2); line-height:1.55 }
+ul.src { margin:0; padding:0; list-style:none; display:grid; gap:8px; font-size:13px }
+ul.src a { color:var(--blue); word-break:break-all }
+.empty { font-size:13px; color:var(--ink-3); background:var(--panel-2); border-radius:8px; padding:12px; margin:0 }
+.h3 { font-size:13px; font-weight:700; color:var(--ink-2); margin:2px 0 -4px }
+.cmp { display:grid; gap:12px }
+.cmp-row { display:grid; gap:4px }
+.cmp-name { display:flex; justify-content:space-between; gap:8px; font-size:13px }
+.cmp-name b { font-variant-numeric:tabular-nums; white-space:nowrap }
+.cmp-name small { color:var(--ink-3); font-size:11.5px }
+.bar { position:relative; height:14px; background:var(--panel-2); border-radius:4px; overflow:hidden }
+.bar i { position:absolute; left:0; top:0; bottom:0; border-radius:4px }
+.bar i.sale { background:var(--green) } .bar i.rent { background:var(--blue) } .bar i.plan { background:var(--violet) }
+.bar i.ext { background:repeating-linear-gradient(135deg,var(--violet) 0 3px,transparent 3px 7px); opacity:.55; border-radius:0 4px 4px 0 }
+.axis { display:flex; justify-content:space-between; font-size:11px; color:var(--ink-3); font-variant-numeric:tabular-nums }
+.btn-line { border:1px solid var(--line); background:var(--panel); border-radius:8px; padding:8px 12px; font-size:13px; cursor:pointer; justify-self:start }
+
+/* 키 설정 화면 */
+.setup { position:absolute; inset:0; z-index:20; display:grid; place-items:center; padding:24px 16px;
+  background:radial-gradient(120% 90% at 30% 20%,#2c3b4d 0%,#141a20 70%); overflow:auto }
+.setup-card { width:min(460px,100%); background:var(--panel); border-radius:16px; padding:26px 24px; box-shadow:0 20px 60px rgba(0,0,0,.45); display:grid; gap:14px }
+.setup-card h1 { margin:0; font-size:21px; font-weight:800; text-wrap:balance }
+.setup-card p { margin:0; color:var(--ink-2); font-size:13.5px }
+.setup-card ol { margin:0; padding-left:20px; display:grid; gap:4px; font-size:13px; color:var(--ink-2) }
+.setup-card label { font-size:12.5px; font-weight:700; color:var(--ink-2) }
+.setup-card input { width:100%; height:44px; border:1.5px solid var(--line); border-radius:10px; padding:0 12px; font-size:14px; font-family:ui-monospace,Consolas,monospace }
+.setup-card .go { height:46px; border:0; border-radius:10px; background:var(--navy); color:var(--on-navy); font-size:15px; font-weight:700; cursor:pointer }
+.setup-card .err { color:var(--red); font-size:13px; font-weight:500 }
+.setup-card small { color:var(--ink-3); font-size:12px }
+
+@media (max-width:700px) {
+  .sheet { left:0; right:0; top:auto; bottom:0; width:auto; max-width:none; max-height:64%; border-radius:16px 16px 0 0; padding-bottom:env(safe-area-inset-bottom,0px) }
+  .legend { display:none }
+  .count { height:44px } .count span { padding:0 12px; font-size:13.5px }
+  .zoom button { width:42px; height:42px }
+  .chip,.seg { height:38px }
+  .tool { width:46px; min-height:48px; font-size:11px } .tool.brand { width:46px; min-height:46px }
+  .mk-body { font-size:13.5px; padding:3px 8px } .mk-name { display:none }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div id="gmap" aria-label="오송역 주변 아파트 시세 위성지도"></div>
+
+  <div class="top">
+    <span class="chip loc">
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c-3.9 0-7 3.1-7 7 0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" fill="currentColor"/></svg>
+      청주시 흥덕구 오송읍
+    </span>
+    <div class="seg" role="group" aria-label="단지 구분">
+      <button type="button" data-f="all" aria-pressed="true">전체</button>
+      <button type="button" data-f="sale" aria-pressed="false">매매</button>
+      <button type="button" data-f="rent" aria-pressed="false">임대</button>
+      <button type="button" data-f="plan" aria-pressed="false">공급예정</button>
+    </div>
+    <select class="chip" id="mode" aria-label="지도 표시 기준">
+      <option value="price">실거래가</option>
+      <option value="units">세대수</option>
+      <option value="year">입주연도</option>
+    </select>
+  </div>
+
+  <div class="tools">
+    <button type="button" class="tool brand" id="btnCmp" aria-pressed="false" title="단지별 가격 비교">비교</button>
+    <button type="button" class="tool" id="btnType" aria-pressed="true" title="위성사진 / 일반지도 전환">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 2 7l10 5 10-5-10-5zm-8 9.2L2 12l10 5 10-5-2-.8-8 4-8-4zm0 5L2 17l10 5 10-5-2-.8-8 4-8-4z" fill="currentColor"/></svg><span id="typeLbl">위성</span></button>
+    <button type="button" class="tool" id="btnEdit" aria-pressed="false" title="마커 위치 조정">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 3h-2v6h6V9l3 3-3 3v-2h-6v6h2l-3 3-3-3h2v-6H5v2l-3-3 3-3v2h6V5H9z" fill="currentColor"/></svg>위치</button>
+    <button type="button" class="tool" id="btnInfo" aria-pressed="false" title="자료 출처와 유의사항">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M11 10.5h2V17h-2zM11 7h2v2h-2z" fill="currentColor"/></svg>안내</button>
+  </div>
+
+  <div class="legend" aria-hidden="true">
+    <span><i style="background:var(--green)"></i>매매 실거래</span>
+    <span><i style="background:var(--blue)"></i>임대(전세·보증금)</span>
+    <span><i style="background:var(--violet)"></i>공급 예정</span>
+  </div>
+  <div class="count"><span>단지<b id="cnt">9</b></span><i></i><span>2026.10.14 기준</span></div>
+  <div class="zoom">
+    <div class="grp">
+      <button type="button" id="zin" aria-label="확대">+</button>
+      <button type="button" id="zout" aria-label="축소">−</button>
+    </div>
+    <button type="button" class="solo" id="zfit" aria-label="전체 단지 보기">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5" stroke="currentColor" stroke-width="2"/></svg>
+    </button>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+  <div class="editbar" id="editbar" hidden>
+    <span>마커를 끌어서 실제 단지 위에 놓으세요. 자동 저장됩니다.</span>
+    <button type="button" id="btnCopy">위치 복사</button>
+    <button type="button" id="btnReset">자동 위치로 되돌리기</button>
+    <button type="button" class="pri" id="btnDone">완료</button>
+  </div>
+  <aside class="sheet" id="sheet" hidden></aside>
+
+  <div class="setup" id="setup" hidden>
+    <form class="setup-card" id="setupForm">
+      <h1>Google 지도 API 키를 입력하세요</h1>
+      <p>실제 Google 위성지도를 불러오려면 본인 계정의 API 키가 한 번 필요합니다. 키는 이 컴퓨터의 브라우저에만 저장됩니다.</p>
+      <ol>
+        <li>Google Cloud 콘솔에서 프로젝트 만들기 + 결제 계정 연결</li>
+        <li>Maps JavaScript API, Geocoding API 사용 설정</li>
+        <li>사용자 인증 정보 → API 키 만들기 → 아래에 붙여넣기</li>
+      </ol>
+      <label for="keyInput">API 키</label>
+      <input id="keyInput" type="text" autocomplete="off" spellcheck="false" placeholder="AIza로 시작하는 키">
+      <div class="err" id="setupErr" hidden></div>
+      <button class="go" type="submit">지도 열기</button>
+      <small>월 1만 회 지도 로드까지는 무료 사용량 범위입니다 (Google 요금 정책 변경 가능).</small>
+    </form>
+  </div>
+</div>
+
+<script>
+/* ---------- 단지 데이터 (2026.10.14 웹 검색 기준) ---------- */
+var DATA = [
+  { id:'paragon1', kind:'sale', name:'오송역 파라곤 센트럴시티 1차', short:'파라곤센트럴\n시티1차',
+    box:[300,175,470,290], units:'2,415세대', year:'2023.06', yearShort:'23년 입주', area:'공급 85~86㎡ (전용 59㎡)', pyeong:'25평',
+    price:'3.9억', priceFull:'3억 9,000', priceNote:'최근 실거래 · 2026.09.27 · 23층',
+    range:'2026년 9월 거래 3.84억 ~ 4.5억',
+    trades:[['2026.09.27','86B (전용 59)','23층','3억 9,000'],['2026.09.26','86B (전용 59)','19층','4억 700'],
+            ['2026.09.21','85A (전용 59)','8층','3억 8,400'],['2026.09.15','전용 59.73㎡','19층','4억 5,000']],
+    notes:['85A 타입 실거래 평균 3억 8,308만원 (호갱노노)','1차에는 전용 84㎡ 타입이 없음. 비교 시 평형 차이 감안'],
+    src:[['호갱노노 · 파라곤센트럴시티1차','https://hogangnono.com/apt/ct02b'],['리치고 · 오송역파라곤센트럴시티','https://m.richgo.ai/realty/danji/a8tzeDT'],['경매알리미 · 실거래 목록','https://map.auctionmsg.com/apt/detail/16297204']] },
+  { id:'donga', kind:'sale', name:'오송역 동아라이크텐', short:'동아라이크텐',
+    box:[120,680,395,880], units:'970세대', year:'2020', yearShort:'20년 입주', area:'전용 77·84㎡ 등', pyeong:'33평',
+    price:'4.5억', priceFull:'4억 5,000', priceNote:'최근 실거래 · 2026.09.06',
+    range:'리치고 시세(26.09) 30평 4.1억 · 33평 4.7억',
+    trades:[['2026.09.06','33평','-','4억 5,000'],['2025.12.17','전용 77㎡ (30평)','21층','4억 4,300'],['2025.12.17','33평','7층','4억 3,500']],
+    notes:['리치고 시세(2026.09.07): 30평 매매 4.1억·전세 2.5억 / 33평 매매 4.7억·전세 3.1억','KB시세 일반가 4억 3,250 (2025.12.19)'],
+    src:[['리치고 · 오송역동아라이크텐','https://m.richgo.ai/realty/danji/a2vXlkg'],['KB부동산 · 오송역동아라이크텐','https://kbland.kr/se/c/37628'],['집순위 · 실거래','https://houseranking.kr/houseranking/news/popup_view_houseranking.php?aptcode=B854357']] },
+  { id:'seohan', kind:'sale', stale:true, name:'오송역 서한이다음 노블리스', short:'서한이다음\n노블리스',
+    box:[430,680,625,880], units:'1,113세대', year:'2025.05', yearShort:'25년 입주', area:'전용 101~182㎡', pyeong:'38평',
+    price:'4.4억', priceFull:'4억 3,714', priceNote:'최근 실거래 · 2025.09.14 · 9층 (분양권)',
+    range:'2025.04~09 분양권 4억 2,427 ~ 4억 4,928',
+    trades:[['2025.09.14','공급 127㎡ (38평)','9층','4억 3,714']],
+    notes:['분양가: 전용 101㎡ 4억 300 ~ 전용 182㎡ 6억 6,900','2026년 매매 실거래는 검색으로 확인되지 않음. 국토부 실거래가 시스템에서 재확인 필요'],
+    src:[['호갱노노 · 서한이다음노블리스','https://hogangnono.com/apt/fzh19'],['국토일보 · 분양 기사','https://www.ikld.kr/news/articleView.html?idxno=260142']] },
+  { id:'hill', kind:'rent', prefix:'임', name:'힐스테이트 오송역퍼스트 (민간임대)', short:'힐스테이트\n오송역퍼스트',
+    box:[900,785,1075,895], units:'2,094세대', year:'2026.09~2027.02 예정', yearShort:'26~27년 입주예정', area:'전용 59㎡ (공급분)', pyeong:'25평',
+    price:'3.2억', priceFull:'3억 1,900~', priceNote:'임대보증금 (공급 당시) · 실거래 없음',
+    range:'임대보증금 3억 1,900 ~ 3억 3,400',
+    trades:[],
+    notes:['10년 민간임대, 임대료 상승률 연 5% 이내','10년 후 분양예정금액 세대당 4억원 이하 전망 (조합 총회 보도)','일반공급 200가구에 3만 4,523명 접수, 평균 172.6 대 1','입주 시기는 자료마다 다름 (2026.09 / 2027.02)'],
+    src:[['헤럴드K · 일반공급 청약','https://www.heraldk.com/article/2026011416490706191'],['위키트리 · 청약 결과','https://www.wikitree.co.kr/articles/1116836'],['위키트리 · 임대 조건','https://www.wikitree.co.kr/articles/1100552'],['호갱노노 · 힐스테이트오송역퍼스트','https://hogangnono.com/apt/fH952']] },
+  { id:'daegwang', kind:'rent', prefix:'전', name:'오송역 대광로제비앙 (민간임대)', short:'대광로제비앙',
+    box:[775,575,905,695], units:'1,541세대', year:'2023', yearShort:'23년 입주', area:'전용 59㎡ 등', pyeong:'25평',
+    price:'1.5억', priceFull:'1억 5,270', priceNote:'전세 실거래 · 2025.12.23',
+    range:'같은 시기 여러 층 동일 금액 전세 거래',
+    trades:[['2025.12.23','전용 59.94㎡','16층','전세 1억 5,270'],['2025.12.23','전용 59.94㎡','14층','전세 1억 5,270']],
+    notes:['민간임대 단지로 매매 실거래 없음'],
+    src:[['디스코 · 봉산리 1510','https://disco.re/l/r03raxk'],['집품 · 오송역 대광로제비앙','https://zippoom.com/review/gWG-UwytUTLjF96O1pB6kQ']] },
+  { id:'centum', kind:'rent', prefix:'호', name:'오송역 대광로제비앙 그랜드센텀 (민간임대)', short:'대광로제비앙\n그랜드센텀',
+    box:[635,715,755,880], units:'1,658세대', year:'2024', yearShort:'24년 입주', area:'전용 84㎡ 등', pyeong:'34평',
+    price:'2.85억', priceFull:'2억 8,500', priceNote:'매물 호가 (실거래 아님)',
+    range:'811동 전용 84.99㎡ 매물',
+    trades:[],
+    notes:['민간임대 단지 매물 호가로, 거래 성격(임차권 등)은 매물별 확인 필요'],
+    src:[['한경닷컴 부동산 · 매물','https://realestate.hankyung.com/listing/17247572'],['디스코 · 봉산리 1531','https://disco.re/l/2ja7ii9']] },
+  { id:'paragon2', kind:'rent', prefix:'전', name:'오송역 파라곤 센트럴시티 2차 (민간임대)', short:'파라곤센트럴\n시티2차',
+    box:[120,335,335,470], units:'1,673세대', year:'-', yearShort:'민간임대', area:'전용 68·84㎡', pyeong:'34평',
+    price:'3.3억', priceFull:'3억 2,900', priceNote:'전세 실거래 · 2026.05',
+    range:'공급 112㎡ (전용 84㎡ 추정) 전세',
+    trades:[['2026.05','공급 112㎡','-','전세 3억 2,900']],
+    notes:['민간임대 단지로 매매 실거래 없음 (KB부동산)'],
+    src:[['KB부동산 · 파라곤센트럴시티2차','https://kbland.kr/se/c/430592']] },
+  { id:'jeil', kind:'rent', prefix:'', name:'제일풍경채 오송 (민간임대)', short:'제일풍경채오송',
+    box:[275,480,395,560], units:'545세대', year:'-', yearShort:'민간임대', area:'81~110㎡', pyeong:'임대',
+    price:null, priceFull:'자료 없음', priceNote:'공개 거래 자료 미확인',
+    range:'공공지원 민간임대 (오송지구 B-5BL)',
+    trades:[],
+    notes:['검색 범위에서 매매·전세 실거래가 확인되지 않음'],
+    src:[['아파트분양정보 · 제일풍경채오송','https://www.aptbunyang.net/?page=bydetail&s3_bylist_uid=11128']] },
+  { id:'hello', kind:'plan', prefix:'공급', name:'오송역 헬로우시티 (C-17BL)', short:'오송역 헬로우시티',
+    box:[1255,560,1345,640], units:'516가구', year:'-', yearShort:'조합원 모집', area:'아파트 480세대 + 오피스텔 36실', pyeong:'84㎡',
+    price:'6억대', priceFull:'6억대', priceNote:'84㎡ 공급 예정가 (조합원 모집)',
+    range:'지상 49층 주거복합 · 오송역 앞',
+    trades:[],
+    notes:['오송역세권 도시개발사업지구 C-17BL','토지확보완료형 지역주택조합, 주택홍보관 2026.10.23 오픈 예정','공급가·개발계획은 예정사항으로 변경될 수 있음','지도상 위치는 개략 표시'],
+    src:[['오송역 헬로우시티 상담 브리핑 자료 (자체 자료)',null]] },
+];
+
+/* ---------- 위치 정보 ----------
+   addr: 지번 주소 (Geocoding으로 실제 좌표 확인)
+   px/py: 사용자 제공 지도 캡처(1200×800)에서의 위치. 주소 좌표를 못 얻으면 이 값으로 위치를 추정한다. */
+const STATION = { lat:36.6208, lng:127.3278, px:960, py:370 };   // KTX 오송역 (위키백과 좌표)
+const GEO = {
+  paragon1:{ addr:'충청북도 청주시 흥덕구 오송읍 봉산리 798', q:'오송역파라곤센트럴시티1차', px:320, py:250 },
+  paragon2:{ addr:null, q:'오송역파라곤센트럴시티2차', px:222, py:320 },
+  jeil:    { addr:'충청북도 청주시 흥덕구 오송읍 봉산리 1516', q:'제일풍경채 오송', px:160, py:440 },
+  donga:   { addr:'충청북도 청주시 흥덕구 오송읍 봉산리 1527', q:'오송역 동아라이크텐', px:100, py:655 },
+  seohan:  { addr:'충청북도 청주시 흥덕구 오송읍 봉산리 1530', q:'오송역 서한이다음 노블리스', px:258, py:665 },
+  centum:  { addr:'충청북도 청주시 흥덕구 오송읍 봉산리 1531', q:'오송역 대광로제비앙 그랜드센텀', px:445, py:648 },
+  daegwang:{ addr:'충청북도 청주시 흥덕구 오송읍 봉산리 1510', q:'오송역 대광로제비앙', px:595, py:512 },
+  hill:    { addr:null, q:'힐스테이트 오송역퍼스트', px:735, py:700 },
+  hello:   { addr:null, q:null, px:905, py:505 },
+};
+
+(() => {
+const $ = id => document.getElementById(id);
+const store = {
+  get(k){ try { return JSON.parse(localStorage.getItem('osong-map:' + k)); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem('osong-map:' + k, JSON.stringify(v)); } catch {} },
+  del(k){ try { localStorage.removeItem('osong-map:' + k); } catch {} },
+};
+const KIND = { sale:'매매', rent:'민간임대', plan:'공급예정' };
+const state = { filter:'all', mode:'price', sel:null, editing:false };
+const byId = id => DATA.find(c => c.id === id);
+const esc = s => String(s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const headOf = c => c.kind === 'sale' ? '매매' : c.kind === 'plan' ? '공급' : ({'전':'전세','임':'보증금','호':'호가'}[c.prefix] || '임대');
+function toast(msg, ms = 2600) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, ms); }
+
+/* ---------- API 키 ---------- */
+const urlKey = new URLSearchParams(location.search).get('key');
+if (urlKey) store.set('key', urlKey);
+function askKey(err) {
+  $('setup').hidden = false;
+  $('keyInput').value = store.get('key') || '';
+  if (err) { $('setupErr').textContent = err; $('setupErr').hidden = false; }
+  $('keyInput').focus();
+}
+$('setupForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const k = $('keyInput').value.trim();
+  if (!/^[\w-]{30,}$/.test(k)) { $('setupErr').textContent = 'API 키 형식이 아닙니다. 콘솔에서 복사한 키 전체를 붙여넣으세요.'; $('setupErr').hidden = false; return; }
+  store.set('key', k); location.reload();
+});
+window.gm_authFailure = () => {
+  store.del('geo');
+  askKey('Google이 이 키를 거부했습니다. Maps JavaScript API 사용 설정, 결제 계정 연결, 키 제한(웹사이트 제한) 설정을 확인하세요.');
+};
+const KEY = store.get('key');
+if (!KEY) { askKey(); return; }
+
+/* Google Maps 공식 동적 로더 */
+(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})
+({ key:KEY, v:'weekly', language:'ko', region:'KR' });
+
+let map, Adv, popMarker = null;
+const markers = {};
+
+/* ---------- 좌표 계산 ---------- */
+const M_LAT = 110574, mLng = lat => 111320 * Math.cos(lat * Math.PI / 180);
+const toLocal = p => ({ e:(p.lng - STATION.lng) * mLng(STATION.lat), n:(p.lat - STATION.lat) * M_LAT });
+const toLatLng = (e, n) => ({ lat:STATION.lat + n / M_LAT, lng:STATION.lng + e / mLng(STATION.lat) });
+
+async function geocodeAll() {
+  const cached = store.get('geo');
+  if (cached && cached.v === 1) return cached.res;
+  const { Geocoder } = await google.maps.importLibrary('geocoding');
+  const gc = new Geocoder();
+  const res = {};
+  const tryOne = q => new Promise(r => gc.geocode({ address:q, region:'KR', language:'ko' }, (out, st) => r(st === 'OK' ? out[0] : null)));
+  for (const id in GEO) {
+    for (const q of [GEO[id].addr, GEO[id].q && (GEO[id].q + ' 청주 오송')].filter(Boolean)) {
+      const r = await tryOne(q);
+      if (!r) continue;
+      const loc = { lat:r.geometry.location.lat(), lng:r.geometry.location.lng() };
+      const precise = r.geometry.location_type !== 'APPROXIMATE' || r.types.some(t => ['premise','establishment','point_of_interest','subpremise'].includes(t));
+      const d = Math.hypot(toLocal(loc).e, toLocal(loc).n);
+      if (precise && d < 3000) { res[id] = loc; break; }
+    }
+  }
+  store.set('geo', { v:1, res });
+  return res;
+}
+/* 캡처 화면 좌표 → 실제 좌표 변환 (축척·이동을 최소제곱으로 맞춤) */
+function fitTransform(found) {
+  let pts = [{ u:0, v:0, e:0, n:0, id:'station' }];
+  for (const id in found) { const L = toLocal(found[id]); pts.push({ u:GEO[id].px - STATION.px, v:-(GEO[id].py - STATION.py), e:L.e, n:L.n, id }); }
+  const solve = P => {
+    const mu = P.reduce((s,p) => s + p.u, 0) / P.length, mv = P.reduce((s,p) => s + p.v, 0) / P.length;
+    const me = P.reduce((s,p) => s + p.e, 0) / P.length, mn = P.reduce((s,p) => s + p.n, 0) / P.length;
+    let num = 0, den = 0; P.forEach(p => { num += (p.u-mu)*(p.e-me) + (p.v-mv)*(p.n-mn); den += (p.u-mu)**2 + (p.v-mv)**2; });
+    const s = num / den; return { s, a:me - s*mu, b:mn - s*mv };
+  };
+  let T = { s:2.0, a:0, b:0 };   // 기본값: 캡처 1px ≈ 2m
+  const bad = new Set();
+  if (pts.length >= 3) {
+    let t = solve(pts);
+    if (t.s > 0.8 && t.s < 6) {
+      pts.forEach(p => { if (p.id !== 'station' && Math.hypot(t.s*p.u + t.a - p.e, t.s*p.v + t.b - p.n) > 350) bad.add(p.id); });
+      const good = pts.filter(p => !bad.has(p.id));
+      if (good.length >= 3) { const t2 = solve(good); if (t2.s > 0.8 && t2.s < 6) t = t2; }
+      T = t;
+    } else Object.keys(found).forEach(id => bad.add(id));
+  }
+  return { T, bad };
+}
+function resolvePositions(found) {
+  const { T, bad } = fitTransform(found);
+  const manual = store.get('pos') || {};
+  DATA.forEach(c => {
+    const g = GEO[c.id];
+    if (manual[c.id]) { c.pos = manual[c.id]; c.how = 'manual'; }
+    else if (found[c.id] && !bad.has(c.id)) { c.pos = found[c.id]; c.how = 'geocode'; }
+    else { c.pos = toLatLng(T.s*(g.px - STATION.px) + T.a, -T.s*(g.py - STATION.py) + T.b); c.how = 'estimate'; }
+  });
+}
+
+/* ---------- 마커 ---------- */
+function markerEl(c) {
+  const b = document.createElement('button'); b.type = 'button';
+  b.className = 'mk ' + c.kind + (c.stale && state.mode === 'price' ? ' stale' : '') + (state.sel === c.id ? ' on' : '') + (c.how === 'estimate' ? ' estimated' : '');
+  let tag, body;
+  if (state.mode === 'price') { tag = c.pyeong; body = c.price ? '<em>' + (c.kind === 'sale' ? '매' : c.prefix) + '</em>' + c.price : '<em></em>시세 미확인'; }
+  else if (state.mode === 'units') { tag = KIND[c.kind]; body = c.units; }
+  else { tag = KIND[c.kind]; body = c.yearShort; }
+  b.innerHTML = '<span class="mk-tag">' + tag + '<span class="est">추정위치</span></span><span class="mk-body">' + body + '</span><span class="mk-name">' + esc(c.short.replace('\n', ' ')) + '</span>';
+  b.setAttribute('aria-label', c.name + ' ' + c.priceFull + ' ' + c.priceNote);
+  return b;
+}
+function renderMarkers() {
+  let n = 0;
+  DATA.forEach(c => {
+    const show = state.filter === 'all' || state.filter === c.kind;
+    let m = markers[c.id];
+    if (!m) {
+      m = markers[c.id] = new Adv({ map, position:c.pos, title:c.name, zIndex:c.kind === 'plan' ? 50 : 10 });
+      m.addListener('click', () => { if (!state.editing) select(c.id); });
+      m.addListener('dragend', () => {
+        const p = m.position; const lat = typeof p.lat === 'function' ? p.lat() : p.lat, lng = typeof p.lng === 'function' ? p.lng() : p.lng;
+        c.pos = { lat, lng }; c.how = 'manual';
+        const manual = store.get('pos') || {}; manual[c.id] = c.pos; store.set('pos', manual);
+        m.content = markerEl(c); toast(c.short.replace('\n', ' ') + ' 위치 저장됨');
+      });
+    }
+    m.content = markerEl(c);
+    m.gmpDraggable = state.editing;
+    m.map = show ? map : null;
+    if (show) n++;
+  });
+  $('cnt').textContent = n;
+  $('app').classList.toggle('editing', state.editing);
+}
+
+/* ---------- 팝업 ---------- */
+function select(id) {
+  state.sel = id;
+  if (popMarker) { popMarker.map = null; popMarker = null; }
+  renderMarkers();
+  if (!id) return;
+  const c = byId(id);
+  const kcol = c.kind === 'sale' ? 'var(--green)' : c.kind === 'rent' ? 'var(--blue)' : 'var(--violet)';
+  const el = document.createElement('div');
+  el.className = 'pop'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', c.name);
+  el.innerHTML = '<div class="pop-h"><strong>' + esc(c.name) + '</strong><button type="button" aria-label="닫기">×</button></div>' +
+    '<div class="pop-b"><div class="pop-price"><em style="color:' + kcol + '">' + headOf(c) + '</em>' + c.priceFull + '</div>' +
+    '<div class="pop-note">' + esc(c.priceNote) + '</div><div class="pop-sub">' + c.units + ' · ' + (c.year === '-' ? c.yearShort : c.year + ' 입주') + '</div>' +
+    (c.how === 'estimate' ? '<div class="pop-warn">지도 위치는 추정값입니다. [위치] 버튼으로 조정할 수 있습니다.</div>' : '') + '</div>' +
+    '<div class="pop-btns"><button type="button" data-t="trade">실거래</button><button type="button" data-t="info">단지</button><button type="button" data-t="src">출처</button></div>';
+  el.querySelector('.pop-h button').addEventListener('click', e => { e.stopPropagation(); select(null); });
+  el.querySelectorAll('.pop-btns button').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openDetail(c.id, b.dataset.t); }));
+  ['click','pointerdown','dblclick','wheel'].forEach(t => el.addEventListener(t, e => e.stopPropagation()));
+  popMarker = new Adv({ map, position:c.pos, content:el, zIndex:1000 });
+  map.panTo(c.pos);
+}
+
+/* ---------- 상세 시트 ---------- */
+const sheet = $('sheet');
+function sheetShell(title, inner) {
+  sheet.innerHTML = '<div class="sh-h"><h2>' + title + '</h2><button type="button" aria-label="닫기">×</button></div><div class="sh-c">' + inner + '</div>';
+  sheet.querySelector('.sh-h button').addEventListener('click', closeSheet);
+  sheet.hidden = false;
+}
+function setPressed(id, v) { $(id).setAttribute('aria-pressed', v); }
+function closeSheet() { sheet.hidden = true; setPressed('btnCmp', false); setPressed('btnInfo', false); }
+function openDetail(id, tab) {
+  const c = byId(id);
+  setPressed('btnCmp', false); setPressed('btnInfo', false);
+  const howTxt = { geocode:'위치: 주소 좌표', manual:'위치: 직접 조정', estimate:'위치: 추정' }[c.how];
+  const tags = '<div class="tags"><span class="tag ' + c.kind + '">' + KIND[c.kind] + '</span><span class="tag">' + c.units + '</span><span class="tag">' +
+    (c.year === '-' ? c.yearShort : c.year + ' 입주') + '</span>' + (c.stale ? '<span class="tag warn">2025년 거래 기준</span>' : '') +
+    '<span class="tag' + (c.how === 'estimate' ? ' warn' : '') + '">' + howTxt + '</span></div>';
+  const big = '<div class="big"><span class="lbl">' + esc(c.priceNote) + '</span><span class="val"><em>' + headOf(c) + '</em>' + c.priceFull + '</span><span class="rng">' + esc(c.range) + '</span></div>';
+  const tabs = '<div class="tabs" role="tablist">' + [['trade','실거래'],['info','단지정보'],['src','출처']].map(t =>
+    '<button type="button" role="tab" data-t="' + t[0] + '" aria-selected="' + (t[0] === tab) + '">' + t[1] + '</button>').join('') + '</div><div id="tabBody"></div>';
+  sheetShell(esc(c.name), tags + big + tabs);
+  const body = sheet.querySelector('#tabBody');
+  const draw = t => {
+    sheet.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.t === t));
+    if (t === 'trade') {
+      body.innerHTML = (c.trades.length
+        ? '<div style="overflow-x:auto"><table><thead><tr><th>계약일</th><th>면적</th><th>층</th><th class="r">금액(만원)</th></tr></thead><tbody>' +
+          c.trades.map(r => '<tr><td>' + r[0] + '</td><td>' + esc(r[1]) + '</td><td>' + r[2] + '</td><td class="r">' + r[3] + '</td></tr>').join('') + '</tbody></table></div>'
+        : '<p class="empty">공개된 실거래 기록이 없습니다. ' + esc(c.priceNote) + '</p>') +
+        '<ul class="notes" style="margin-top:12px">' + c.notes.map(n => '<li>' + esc(n) + '</li>').join('') + '</ul>';
+    } else if (t === 'info') {
+      body.innerHTML = '<dl><dt>단지명</dt><dd>' + esc(c.name) + '</dd><dt>구분</dt><dd>' + KIND[c.kind] + '</dd><dt>규모</dt><dd>' + c.units + '</dd>' +
+        '<dt>입주</dt><dd>' + (c.year === '-' ? '-' : c.year) + '</dd><dt>면적</dt><dd>' + esc(c.area) + '</dd><dt>표시 평형</dt><dd>' + c.pyeong + '</dd>' +
+        '<dt>주소</dt><dd>' + (GEO[c.id].addr ? esc(GEO[c.id].addr) : '확인 필요') + '</dd></dl>';
+    } else {
+      body.innerHTML = '<ul class="src">' + c.src.map(s => '<li>' + (s[1] ? '<a href="' + s[1] + '" target="_blank" rel="noopener">' + esc(s[0]) + '</a>' : esc(s[0])) + '</li>').join('') +
+        '<li><a href="https://rt.molit.go.kr" target="_blank" rel="noopener">국토교통부 실거래가 공개시스템 (원자료 확인)</a></li></ul>';
+    }
+  };
+  sheet.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => draw(b.dataset.t)));
+  draw(tab || 'trade');
+}
+function openCompare() {
+  const MAX = 7;
+  const sale = [
+    { id:'paragon1', v:3.9, lbl:'3.9억', sub:'25평 · 26.09 실거래' },
+    { id:'donga', v:4.5, lbl:'4.5억', sub:'33평 · 26.09 실거래' },
+    { id:'seohan', v:4.37, lbl:'4.37억', sub:'38평 · 25.09 분양권' },
+    { id:'hello', v:6.0, ext:1.0, lbl:'6억대', sub:'84㎡ · 공급 예정가' },
+  ];
+  const rent = [
+    { id:'paragon2', v:3.29, lbl:'3.29억', sub:'전세 · 26.05' },
+    { id:'hill', v:3.19, ext:0.15, lbl:'3.19~3.34억', sub:'임대보증금' },
+    { id:'centum', v:2.85, lbl:'2.85억', sub:'매물 호가' },
+    { id:'daegwang', v:1.53, lbl:'1.53억', sub:'전세 · 25.12' },
+  ];
+  const row = r => { const c = byId(r.id); return '<div class="cmp-row"><div class="cmp-name"><span>' + esc(c.short.replace('\n', '')) + ' <small>' + r.sub + '</small></span><b>' + r.lbl + '</b></div>' +
+    '<div class="bar"><i class="' + c.kind + '" style="width:' + (r.v/MAX*100) + '%"></i>' +
+    (r.ext ? '<i class="ext" style="left:' + (r.v/MAX*100) + '%;width:' + (r.ext/MAX*100) + '%"></i>' : '') + '</div></div>'; };
+  const axis = '<div class="axis">' + [0,1,2,3,4,5,6,7].map(v => '<span>' + v + '억</span>').join('') + '</div>';
+  sheetShell('주변 단지 가격 비교',
+    '<p class="pop-note" style="margin:0">평형이 서로 다르므로 표시 평형을 함께 보세요. 막대 길이는 0~7억 같은 축입니다.</p>' +
+    '<div class="h3">매매 · 공급가</div><div class="cmp">' + sale.map(row).join('') + axis + '</div>' +
+    '<div class="h3">민간임대 · 전세 · 보증금</div><div class="cmp">' + rent.map(row).join('') + axis + '</div>' +
+    '<ul class="notes"><li>빗금 구간은 가격 범위 (예: 6억대 = 6억 이상 7억 미만)</li><li>서한이다음 노블리스는 2026년 실거래가 확인되지 않아 2025년 분양권 거래로 표시</li><li>제일풍경채 오송은 공개 거래 자료가 없어 제외</li></ul>');
+  setPressed('btnCmp', true); setPressed('btnInfo', false);
+}
+function openInfo() {
+  const est = DATA.filter(c => c.how === 'estimate').map(c => c.short.replace('\n', ' '));
+  sheetShell('자료 안내',
+    '<div class="tags"><span class="tag">기준일 2026.10.14</span><span class="tag">배경: Google 위성지도</span></div>' +
+    (est.length ? '<p class="empty" style="color:var(--amber)">추정 위치로 표시된 단지: ' + esc(est.join(', ')) + '<br>[위치] 버튼을 눌러 실제 단지 위로 끌어다 놓으면 이 브라우저에 저장됩니다.</p>' : '') +
+    '<ul class="notes">' +
+    '<li>실거래가는 국토교통부 실거래가 공개 자료를 재가공한 민간 서비스(호갱노노·리치고·KB부동산·집순위 등)에서 확인한 값입니다.</li>' +
+    '<li>민간임대 단지는 매매 거래가 없어 전세·임대보증금·매물 호가를 표시했습니다. 매매가와 직접 비교하지 마세요.</li>' +
+    '<li>오송역 헬로우시티 가격은 조합원 모집 자료의 공급 예정가이며 시세가 아닙니다. 변경될 수 있습니다.</li>' +
+    '<li>단지 위치는 지번 주소 좌표를 우선 쓰고, 주소가 없거나 좌표를 못 찾은 단지는 추정 위치로 표시합니다.</li>' +
+    '<li>고객 안내 전 국토교통부 실거래가 공개시스템에서 최신 거래를 다시 확인하세요.</li></ul>' +
+    '<ul class="src"><li><a href="https://rt.molit.go.kr" target="_blank" rel="noopener">국토교통부 실거래가 공개시스템</a></li></ul>' +
+    '<button type="button" class="btn-line" id="btnKey">API 키 변경</button>');
+  $('btnKey').addEventListener('click', () => askKey());
+  setPressed('btnInfo', true); setPressed('btnCmp', false);
+}
+
+/* ---------- 지도 시작 ---------- */
+function fitAll() {
+  const b = new google.maps.LatLngBounds();
+  DATA.filter(c => state.filter === 'all' || state.filter === c.kind).forEach(c => b.extend(c.pos));
+  const narrow = innerWidth < 700;
+  map.fitBounds(b, narrow ? { top:120, bottom:110, left:30, right:70 } : { top:130, bottom:120, left:80, right:110 });
+}
+async function init() {
+  const { Map } = await google.maps.importLibrary('maps');
+  ({ AdvancedMarkerElement:Adv } = await google.maps.importLibrary('marker'));
+  map = new Map($('gmap'), {
+    center:STATION, zoom:16, mapId:'DEMO_MAP_ID', mapTypeId:'hybrid',
+    disableDefaultUI:true, gestureHandling:'greedy', clickableIcons:false, keyboardShortcuts:true,
+  });
+  map.addListener('click', () => select(null));
+  let found = {};
+  try { found = await geocodeAll(); } catch (e) { toast('주소 좌표를 불러오지 못해 추정 위치로 표시합니다. (Geocoding API 사용 설정 확인)', 5000); }
+  resolvePositions(found);
+  renderMarkers();
+  fitAll();
+  if (innerWidth >= 700) setTimeout(() => select('hello'), 600);
+  const est = DATA.filter(c => c.how === 'estimate').length;
+  if (est) toast('추정 위치 단지 ' + est + '곳 · [위치] 버튼으로 조정할 수 있습니다', 4200);
+}
+
+/* ---------- 컨트롤 ---------- */
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  state.filter = b.dataset.f;
+  if (state.sel && state.filter !== 'all' && byId(state.sel).kind !== state.filter) select(null); else renderMarkers();
+}));
+$('mode').addEventListener('change', e => { state.mode = e.target.value; renderMarkers(); });
+$('btnCmp').addEventListener('click', e => e.currentTarget.getAttribute('aria-pressed') === 'true' ? closeSheet() : openCompare());
+$('btnInfo').addEventListener('click', e => e.currentTarget.getAttribute('aria-pressed') === 'true' ? closeSheet() : openInfo());
+$('btnType').addEventListener('click', () => {
+  const sat = map.getMapTypeId() !== 'hybrid';
+  map.setMapTypeId(sat ? 'hybrid' : 'roadmap');
+  setPressed('btnType', sat); $('typeLbl').textContent = sat ? '위성' : '지도';
+});
+const setEdit = on => { state.editing = on; setPressed('btnEdit', on); $('editbar').hidden = !on; if (on) select(null); else renderMarkers(); };
+$('btnEdit').addEventListener('click', () => setEdit(!state.editing));
+$('btnDone').addEventListener('click', () => setEdit(false));
+$('btnReset').addEventListener('click', () => { store.del('pos'); resolvePositions(store.get('geo')?.res || {}); DATA.forEach(c => markers[c.id].position = c.pos); renderMarkers(); toast('자동 위치로 되돌렸습니다'); });
+$('btnCopy').addEventListener('click', () => {
+  const txt = JSON.stringify(Object.fromEntries(DATA.map(c => [c.id, { lat:+c.pos.lat.toFixed(6), lng:+c.pos.lng.toFixed(6) }])));
+  navigator.clipboard.writeText(txt).then(() => toast('위치 좌표를 복사했습니다'), () => { prompt('아래 내용을 복사하세요', txt); });
+});
+$('zin').addEventListener('click', () => map.setZoom(map.getZoom() + 1));
+$('zout').addEventListener('click', () => map.setZoom(map.getZoom() - 1));
+$('zfit').addEventListener('click', fitAll);
+
+init().catch(err => { console.error(err); askKey('Google 지도를 불러오지 못했습니다. 인터넷 연결과 API 키를 확인하세요.'); });
+})();
+</script>
+</body>
+</html>
