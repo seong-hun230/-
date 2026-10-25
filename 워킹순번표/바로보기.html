@@ -1,0 +1,549 @@
+<title>2본 2팀 워킹순번표</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<style id="css">
+/* 레이아웃: 한 손 폰 화면용 단일 컬럼. 맨 위 '지금 차례' 카드 → 순번 → 받은 기록 */
+:root {
+  --bg: #eef1ee;
+  --surface: #ffffff;
+  --ink: #16201b;
+  --muted: #5b6a62;
+  --line: #d7ded9;
+  --accent: #1d6a50;
+  --accent-soft: #e1efe8;
+  --accent-ink: #ffffff;
+  --next: #9a6110;
+  --next-soft: #f6ead6;
+  --danger: #b0402c;
+  --font: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1412; --surface: #18201c; --ink: #e6ede8; --muted: #97a69d; --line: #2a3530;
+    --accent: #46b388; --accent-soft: #1b3229; --accent-ink: #08130e;
+    --next: #e2a64a; --next-soft: #33281a; --danger: #e57560;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1412; --surface: #18201c; --ink: #e6ede8; --muted: #97a69d; --line: #2a3530;
+  --accent: #46b388; --accent-soft: #1b3229; --accent-ink: #08130e;
+  --next: #e2a64a; --next-soft: #33281a; --danger: #e57560;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.wrap {
+  max-width: 520px;
+  margin: 0 auto;
+  padding-block: 20px 32px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+h1, h2, p { margin: 0; }
+button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 12px 16px;
+  min-height: 48px;
+}
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: .55; cursor: default; }
+.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.ghost { background: transparent; }
+.danger-text { color: var(--danger); }
+
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .08em; color: var(--accent); }
+h1 { font-size: 26px; font-weight: 700; letter-spacing: -.01em; text-wrap: balance; }
+.today { font-size: 14px; color: var(--muted); }
+.note { font-size: 13px; color: var(--next); background: var(--next-soft); border-radius: 10px; padding: 8px 12px; }
+
+.turn {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.label { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+.who { font-size: 34px; font-weight: 700; line-height: 1.2; letter-spacing: -.02em; }
+.who small { font-size: 20px; font-weight: 500; color: var(--muted); margin-left: 4px; }
+.nextline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 15px; color: var(--muted); }
+.nextline strong { color: var(--next); background: var(--next-soft); border-radius: 999px; padding: 2px 10px; font-weight: 700; }
+#checkBtn { font-size: 18px; min-height: 58px; }
+#skipBtn { color: var(--muted); font-size: 15px; }
+.confirm { border-top: 1px dashed var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+.confirm p { font-weight: 500; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.row button { flex: 1 1 140px; }
+
+.done { background: var(--accent-soft); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.done.warn { background: var(--next-soft); }
+.done p { white-space: pre-line; font-weight: 500; }
+.done textarea {
+  width: 100%; min-height: 96px; font: inherit; font-size: 14px;
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px;
+  background: var(--surface); color: var(--ink); resize: vertical;
+}
+.copymsg { font-size: 13px; color: var(--muted); }
+
+.block { display: flex; flex-direction: column; gap: 10px; }
+h2 { font-size: 15px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+
+.order { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.person {
+  display: grid; grid-template-columns: 32px 1fr auto; align-items: center; gap: 12px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px;
+}
+.person.is-current { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.num {
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  font-weight: 700; font-size: 15px; background: var(--bg); color: var(--muted);
+}
+.is-current .num { background: var(--accent); color: var(--accent-ink); }
+.is-next .num { background: var(--next-soft); color: var(--next); }
+.pbody { min-width: 0; display: flex; flex-direction: column; }
+.pname { font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pname small { font-weight: 500; color: var(--muted); font-size: 14px; }
+.chip { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 1px 8px; }
+.chip.now { background: var(--accent); color: var(--accent-ink); }
+.chip.nx { background: var(--next-soft); color: var(--next); }
+.plast { font-size: 13px; color: var(--muted); }
+.pcount { text-align: right; font-size: 12px; color: var(--muted); line-height: 1.3; }
+.pcount b { display: block; font-size: 20px; color: var(--ink); }
+
+.logs { display: flex; flex-direction: column; gap: 12px; }
+.day { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.dayhead { display: flex; justify-content: space-between; gap: 8px; padding: 10px 14px; font-size: 14px; font-weight: 700; border-bottom: 1px solid var(--line); }
+.dayhead span { color: var(--muted); font-weight: 500; }
+.day ul { list-style: none; margin: 0; padding: 0; }
+.day li { display: flex; gap: 14px; align-items: baseline; padding: 9px 14px; border-top: 1px solid var(--line); font-size: 15px; }
+.day li:first-child { border-top: 0; }
+.day time { color: var(--muted); font-size: 14px; min-width: 44px; }
+.day li.skipped span:not(.tag-skip) { color: var(--muted); }
+.tag-skip { font-size: 12px; font-weight: 700; color: var(--next); background: var(--next-soft); border-radius: 999px; padding: 1px 8px; }
+.empty { color: var(--muted); font-size: 14px; border: 1px dashed var(--line); border-radius: 14px; padding: 16px; }
+.undo { display: flex; flex-direction: column; gap: 10px; }
+.undo .confirm { border-top: 0; padding-top: 0; }
+footer { font-size: 13px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) {
+  .done { animation: pop .25s ease-out; }
+  @keyframes pop { from { transform: translateY(-4px); opacity: .6; } to { transform: none; opacity: 1; } }
+}
+</style>
+<template id="tpl"><main class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow" id="team">2본 2팀</p>
+      <h1>워킹순번표</h1>
+    </div>
+    <p class="today" id="today"></p>
+  </header>
+  <p class="note" id="note" hidden></p>
+  <section class="turn" aria-live="polite">
+    <p class="label">지금 워킹 받을 차례</p>
+    <p class="who" id="curName"></p>
+    <p class="nextline">다음 순번 <strong id="nextName"></strong></p>
+    <button id="checkBtn" class="primary">워킹 받음 체크</button>
+    <button id="skipBtn" class="ghost">자리에 없음 · 이번 순번 건너뛰기</button>
+    <div id="confirmBox" class="confirm" hidden>
+      <p id="confirmText"></p>
+      <div class="row">
+        <button id="confirmYes" class="primary">네, 체크합니다</button>
+        <button id="confirmNo" class="ghost">취소</button>
+      </div>
+    </div>
+  </section>
+  <section id="doneBox" class="done" hidden aria-live="polite">
+    <p id="doneText"></p>
+    <button id="copyBtn">카톡 알림 문구 복사</button>
+    <textarea id="copyArea" readonly hidden aria-label="카톡에 붙여넣을 문구"></textarea>
+    <p class="copymsg" id="copyMsg" hidden></p>
+  </section>
+  <section class="block">
+    <h2>순번</h2>
+    <ol class="order" id="orderList"></ol>
+  </section>
+  <section class="block">
+    <h2>받은 기록</h2>
+    <div class="logs" id="logList"></div>
+    <div class="undo">
+      <button id="undoBtn" class="ghost danger-text" hidden>마지막 기록 취소 (잘못 눌렀을 때)</button>
+      <div id="undoBox" class="confirm" hidden>
+        <p id="undoText"></p>
+        <div class="row">
+          <button id="undoYes" class="primary">네, 취소합니다</button>
+          <button id="undoNo" class="ghost">아니요</button>
+        </div>
+      </div>
+    </div>
+  </section>
+  <footer id="status"></footer>
+</main></template>
+<div id="root"></div>
+<script id="walking-data" type="application/json">{"team":"2본 2팀","staff":["홍명숙 실장","김기엽 부장","서정주 부장"],"link":"https://claude.ai/artifact/BHARTx9JrQvbsNUHpfb7pT","log":[]}</script>
+<script id="app">
+(function () {
+  'use strict';
+
+  /* 저장된 데이터: log 항목 = { n: 담당자, t: 시각(ms), k: 'r' 받음 | 's' 건너뜀 } */
+  var DATA = JSON.parse(document.getElementById('walking-data').textContent);
+  var SKELETON_START = '<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>\n';
+  var SKELETON_END = '\n</body></html>';
+  var PENDING_KEY = 'walking-pending';
+  var SEEN_KEY = 'walking-seen';
+
+  var $ = function (id) { return document.getElementById(id); };
+  $('root').appendChild($('tpl').content.cloneNode(true));
+
+  /* ---------- 날짜 (한국 시간) ---------- */
+  var WEEK = ['일', '월', '화', '수', '목', '금', '토'];
+  var fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Seoul', year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23', weekday: 'short'
+  });
+  function pad(v) { return ('0' + v).slice(-2); }
+  function when(ts) {
+    var p = {};
+    fmt.formatToParts(new Date(ts)).forEach(function (x) { p[x.type] = x.value; });
+    var wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(p.weekday);
+    return {
+      day: p.year + '-' + pad(p.month) + '-' + pad(p.day),
+      dayLabel: Number(p.month) + '월 ' + Number(p.day) + '일(' + WEEK[wd] + ')',
+      time: pad(p.hour) + ':' + pad(p.minute)
+    };
+  }
+
+  /* ---------- 순번 계산 ---------- */
+  function compute(log) {
+    var staff = DATA.staff;
+    var todayKey = when(Date.now()).day;
+    var entries = log.map(function (r) {
+      var w = when(r.t);
+      return { name: r.n, ts: r.t, skipped: r.k === 's', day: w.day, dayLabel: w.dayLabel, time: w.time };
+    });
+    var people = staff.map(function (name) {
+      var mine = entries.filter(function (e) { return e.name === name && !e.skipped; });
+      var last = mine[mine.length - 1];
+      return {
+        name: name, total: mine.length,
+        today: mine.filter(function (e) { return e.day === todayKey; }).length,
+        lastLabel: last ? last.dayLabel + ' ' + last.time : ''
+      };
+    });
+    var ci = 0;
+    if (entries.length) {
+      var idx = staff.indexOf(entries[entries.length - 1].name);
+      ci = idx === -1 ? 0 : (idx + 1) % staff.length;
+    }
+    return {
+      people: people, currentIndex: ci,
+      current: staff[ci], next: staff[(ci + 1) % staff.length],
+      entries: entries.slice().reverse()
+    };
+  }
+
+  /* ---------- 저장 (이 페이지를 새 버전으로 게시) ---------- */
+  var art = null;       // claude artifact 기능
+  var preview = false;  // claude 밖에서 열었을 때(테스트용): 저장 없이 화면만 바뀜
+  var readOnly = false;
+  var saving = false;
+  var log = DATA.log;
+  var s = null;
+
+  function buildDoc(newLog) {
+    var data = { team: DATA.team, staff: DATA.staff, link: DATA.link, log: newLog };
+    var json = JSON.stringify(data).replace(/</g, '\\u003c');
+    var close = '</' + 'script>';
+    return SKELETON_START +
+      '<title>' + DATA.team + ' 워킹순번표</title>\n' +
+      '<meta name="claude:viewport-fit-sides" content="cover">\n' +
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">\n' +
+      '<style id="css">' + $('css').textContent + '</style>\n' +
+      '<template id="tpl">' + $('tpl').innerHTML + '</template>\n' +
+      '<div id="root"></div>\n' +
+      '<script id="walking-data" type="application/json">' + json + close + '\n' +
+      '<script id="app">' + $('app').textContent + close + '\n' +
+      SKELETON_END;
+  }
+
+  function stash(key, val) {
+    try { if (val == null) sessionStorage.removeItem(key); else sessionStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* 무시 */ }
+  }
+  function unstash(key) {
+    try { var v = sessionStorage.getItem(key); sessionStorage.removeItem(key); return v ? JSON.parse(v) : null; } catch (e) { return null; }
+  }
+
+  function save(newLog, pending) {
+    saving = true;
+    render();
+    stash(PENDING_KEY, pending);
+    if (preview) {
+      log = newLog;
+      saving = false;
+      afterLoad();
+      return;
+    }
+    // 성공하면 열려 있는 모든 화면(이 화면 포함)이 새 버전으로 자동 새로고침됩니다.
+    art.publish(buildDoc(newLog)).catch(function (err) {
+      var code = err && err.code;
+      if (code === 'conflict') return; // 다른 사람이 먼저 저장 → 자동 새로고침되며 안내가 뜸
+      stash(PENDING_KEY, null);
+      saving = false;
+      if (code === 'not_writer' || code === 'not_granted' || code === 'consent_required' ||
+          code === 'capability_disabled' || code === 'not_declared' || code === 'capability_removed') {
+        setReadOnly();
+        showDone('이 화면은 보기 전용입니다. 체크는 편집 권한이 있는 사람만 할 수 있습니다.', '', true);
+      } else if (code === 'rate_limited') {
+        showDone('너무 빠르게 눌렀습니다. 잠시 후 다시 눌러 주세요.', '', true);
+      } else {
+        showDone('저장하지 못했습니다. 인터넷 연결을 확인하고 다시 눌러 주세요.', '', true);
+      }
+      render();
+    });
+  }
+
+  function setReadOnly() {
+    readOnly = true;
+    $('note').textContent = '보기 전용 화면입니다. 순번과 기록은 실시간으로 볼 수 있고, 체크는 편집 권한이 있는 사람만 할 수 있습니다.';
+    $('note').hidden = false;
+  }
+
+  /* ---------- 화면 그리기 ---------- */
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function splitName(full) {
+    var i = full.lastIndexOf(' ');
+    return i > 0 ? { name: full.slice(0, i), title: full.slice(i + 1) } : { name: full, title: '' };
+  }
+  function nameNode(full) {
+    var p = splitName(full);
+    var frag = document.createDocumentFragment();
+    frag.appendChild(document.createTextNode(p.name));
+    if (p.title) frag.appendChild(el('small', null, p.title));
+    return frag;
+  }
+  function what(e) { return e.skipped ? '부재로 순번 건너뜀' : '워킹 받음'; }
+
+  function render() {
+    s = compute(log);
+    $('team').textContent = DATA.team;
+    $('today').textContent = '오늘 ' + when(Date.now()).dayLabel;
+    $('curName').replaceChildren(nameNode(s.current));
+    $('nextName').textContent = s.next;
+    $('checkBtn').textContent = s.current + ' 워킹 받음 체크';
+    var canWrite = !readOnly && (art || preview);
+    var confirming = !$('confirmBox').hidden;
+    $('checkBtn').hidden = !canWrite || confirming;
+    $('skipBtn').hidden = !canWrite || confirming || DATA.staff.length < 2;
+    $('checkBtn').disabled = saving;
+    $('skipBtn').disabled = saving;
+    $('confirmYes').disabled = saving;
+    $('undoYes').disabled = saving;
+    if (!canWrite) { $('confirmBox').hidden = true; $('undoBox').hidden = true; }
+
+    var nextIndex = (s.currentIndex + 1) % s.people.length;
+    var ol = $('orderList');
+    ol.replaceChildren();
+    s.people.forEach(function (p, i) {
+      var cls = 'person' + (i === s.currentIndex ? ' is-current' : (i === nextIndex ? ' is-next' : ''));
+      var li = el('li', cls);
+      li.appendChild(el('span', 'num', String(i + 1)));
+      var body = el('div', 'pbody');
+      var nm = el('span', 'pname');
+      nm.appendChild(nameNode(p.name));
+      if (i === s.currentIndex) nm.appendChild(el('span', 'chip now', '지금 차례'));
+      else if (i === nextIndex) nm.appendChild(el('span', 'chip nx', '다음'));
+      body.appendChild(nm);
+      body.appendChild(el('span', 'plast', p.lastLabel ? '최근 받음 ' + p.lastLabel : '아직 받은 기록 없음'));
+      li.appendChild(body);
+      var cnt = el('div', 'pcount');
+      cnt.appendChild(el('b', null, String(p.today)));
+      cnt.appendChild(document.createTextNode('오늘 · 누적 ' + p.total));
+      li.appendChild(cnt);
+      ol.appendChild(li);
+    });
+
+    var box = $('logList');
+    box.replaceChildren();
+    if (!s.entries.length) {
+      box.appendChild(el('p', 'empty', '아직 기록이 없습니다. 첫 손님이 오면 위의 체크 버튼을 눌러 주세요.'));
+    } else {
+      var groups = [];
+      s.entries.slice(0, 80).forEach(function (e) {
+        var g = groups[groups.length - 1];
+        if (!g || g.day !== e.day) { g = { day: e.day, label: e.dayLabel, items: [] }; groups.push(g); }
+        g.items.push(e);
+      });
+      groups.forEach(function (g) {
+        var d = el('div', 'day');
+        var head = el('div', 'dayhead', g.label);
+        var skips = g.items.filter(function (e) { return e.skipped; }).length;
+        head.appendChild(el('span', null, (g.items.length - skips) + '건' + (skips ? ' · 건너뜀 ' + skips : '')));
+        d.appendChild(head);
+        var ul = el('ul');
+        g.items.forEach(function (e) {
+          var li = el('li', e.skipped ? 'skipped' : null);
+          li.appendChild(el('time', null, e.time));
+          li.appendChild(el('span', null, e.name));
+          if (e.skipped) li.appendChild(el('span', 'tag-skip', '건너뜀(부재)'));
+          ul.appendChild(li);
+        });
+        d.appendChild(ul);
+        box.appendChild(d);
+      });
+    }
+    $('undoBtn').hidden = !canWrite || !s.entries.length || !$('undoBox').hidden;
+    $('status').textContent = saving ? '저장 중…'
+      : preview ? '미리보기: 저장되지 않습니다'
+      : '다른 직원이 체크하면 이 화면이 자동으로 새로고침됩니다';
+  }
+
+  function kakaoText(e) {
+    var lines = ['[' + DATA.team + ' 워킹]', e.dayLabel + ' ' + e.time + ' ' + e.name + ' ' + what(e), '▶ 다음 순번: ' + s.current];
+    if (DATA.link) lines.push('순번표: ' + DATA.link);
+    return lines.join('\n');
+  }
+
+  function showDone(text, copyText, warn) {
+    $('doneBox').className = 'done' + (warn ? ' warn' : '');
+    $('doneText').textContent = text;
+    $('copyBtn').hidden = !copyText;
+    $('copyBtn').dataset.text = copyText || '';
+    $('copyArea').hidden = true;
+    $('copyMsg').hidden = true;
+    $('doneBox').hidden = false;
+  }
+
+  /* 화면을 열거나 새 버전으로 바뀌었을 때: 방금 한 일의 결과 / 다른 직원의 새 기록 안내 */
+  function afterLoad() {
+    render();
+    var pending = unstash(PENDING_KEY);
+    var seen = unstash(SEEN_KEY);
+    stash(SEEN_KEY, log.length);
+    if (pending && pending.op === 'add') {
+      var mine = null;
+      s.entries.forEach(function (e) { if (e.ts === pending.t && e.name === pending.n) mine = e; });
+      if (mine) {
+        showDone(mine.name + ' · ' + mine.dayLabel + ' ' + mine.time + ' ' + what(mine) +
+          (mine.skipped ? ' 처리 완료' : ' 체크 완료') + '\n다음 순번은 ' + s.current + '입니다.', kakaoText(mine));
+      } else {
+        showDone('그 사이 다른 직원이 먼저 체크해서 순번이 바뀌었습니다. 지금 차례를 다시 확인해 주세요.', '', true);
+      }
+    } else if (pending && pending.op === 'undo') {
+      var still = s.entries.some(function (e) { return e.ts === pending.t && e.name === pending.n; });
+      if (!still) showDone('마지막 기록(' + pending.label + ')을 취소했습니다.\n지금 차례는 ' + s.current + '입니다.', '', true);
+      else showDone('그 사이 새 기록이 생겨서 취소하지 않았습니다. 기록을 다시 확인해 주세요.', '', true);
+    } else if (typeof seen === 'number' && log.length > seen && s.entries[0]) {
+      var e = s.entries[0];
+      showDone('새 기록: ' + e.dayLabel + ' ' + e.time + ' ' + e.name + ' ' + what(e) + '\n다음 순번은 ' + s.current + '입니다.', kakaoText(e));
+    }
+  }
+
+  /* ---------- 버튼 ---------- */
+  var mode = 'r';
+  function openConfirm(m) {
+    mode = m;
+    $('confirmText').textContent = m === 's'
+      ? s.current + '님이 자리에 없어 이번 순번을 건너뛸까요? ' + s.next + ' 차례로 넘어갑니다.'
+      : s.current + '님이 워킹을 받은 것으로 체크할까요?';
+    $('confirmYes').textContent = m === 's' ? '네, 건너뜁니다' : '네, 체크합니다';
+    $('confirmBox').hidden = false;
+    render();
+    $('confirmYes').focus();
+  }
+  function closeConfirm() { $('confirmBox').hidden = true; render(); }
+  $('checkBtn').addEventListener('click', function () { openConfirm('r'); });
+  $('skipBtn').addEventListener('click', function () { openConfirm('s'); });
+  $('confirmNo').addEventListener('click', closeConfirm);
+  $('confirmYes').addEventListener('click', function () {
+    if (saving) return;
+    var entry = { n: s.current, t: Date.now(), k: mode };
+    $('confirmBox').hidden = true;
+    save(log.concat([entry]), { op: 'add', n: entry.n, t: entry.t });
+  });
+
+  $('undoBtn').addEventListener('click', function () {
+    var e = s.entries[0];
+    if (!e) return;
+    $('undoText').textContent = e.dayLabel + ' ' + e.time + ' ' + e.name + ' ' + what(e) + ' 기록을 취소할까요? 순번이 한 칸 되돌아갑니다.';
+    $('undoBox').hidden = false;
+    render();
+  });
+  $('undoNo').addEventListener('click', function () { $('undoBox').hidden = true; render(); });
+  $('undoYes').addEventListener('click', function () {
+    if (saving || !log.length) return;
+    var e = s.entries[0];
+    $('undoBox').hidden = true;
+    save(log.slice(0, -1), { op: 'undo', n: e.name, t: e.ts, label: e.dayLabel + ' ' + e.time + ' ' + e.name + ' ' + what(e) });
+  });
+
+  $('copyBtn').addEventListener('click', function () {
+    var text = $('copyBtn').dataset.text || '';
+    var area = $('copyArea');
+    var msg = $('copyMsg');
+    function fallback() {
+      area.value = text;
+      area.hidden = false;
+      area.focus();
+      area.select();
+      msg.textContent = '아래 글자를 길게 눌러 전체 선택 → 복사한 뒤 카톡에 붙여넣기 하세요.';
+      msg.hidden = false;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        msg.textContent = '복사했습니다. 카톡 단톡방에 붙여넣기 하세요.';
+        msg.hidden = false;
+        area.hidden = true;
+      }).catch(fallback);
+    } else {
+      fallback();
+    }
+  });
+
+  /* ---------- 시작 ---------- */
+  afterLoad();
+  if (location.protocol === 'file:' && !window.claude) {
+    preview = true;
+    render();
+  } else {
+    var tries = 0;
+    (function connect() {
+      if (window.claude && typeof window.claude.use === 'function') {
+        window.claude.use('artifact').then(function (a) {
+          art = a;
+          if (!a) setReadOnly();
+          render();
+        }).catch(function () { setReadOnly(); render(); });
+      } else if (++tries < 50) {
+        setTimeout(connect, 200);
+      } else {
+        setReadOnly();
+        render();
+      }
+    })();
+  }
+})();
+</script>
