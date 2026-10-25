@@ -76,6 +76,7 @@ h1 { font-size: 26px; font-weight: 700; letter-spacing: -.01em; text-wrap: balan
 .today { font-size: 14px; color: var(--muted); }
 .topright { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .refresh { min-height: 40px; padding: 6px 14px; font-size: 14px; font-weight: 500; }
+.shot { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); }
 .note { font-size: 13px; color: var(--next); background: var(--next-soft); border-radius: 10px; padding: 8px 12px; }
 
 .turn {
@@ -160,6 +161,7 @@ footer { font-size: 13px; color: var(--muted); }
     <div class="topright">
       <p class="today" id="today"></p>
       <button id="refreshBtn" class="refresh">새로고침</button>
+      <button id="shotBtn" class="refresh">이미지 저장</button>
     </div>
   </header>
   <p class="note" id="note" hidden></p>
@@ -179,6 +181,7 @@ footer { font-size: 13px; color: var(--muted); }
   </section>
   <section id="doneBox" class="done" hidden aria-live="polite">
     <p id="doneText"></p>
+    <img id="shotImg" class="shot" alt="워킹순번표 이미지" hidden>
     <button id="copyBtn">카톡 알림 문구 복사</button>
     <textarea id="copyArea" readonly hidden aria-label="카톡에 붙여넣을 문구"></textarea>
     <p class="copymsg" id="copyMsg" hidden></p>
@@ -268,6 +271,7 @@ footer { font-size: 13px; color: var(--muted); }
 
   /* ---------- 저장 (이 페이지를 새 버전으로 게시) ---------- */
   var art = null;       // claude artifact 기능
+  var dl = null;        // 파일 저장 기능 (이미지 저장)
   var preview = false;  // claude 밖에서 열었을 때(테스트용): 저장 없이 화면만 바뀜
   var readOnly = false;
   var saving = false;
@@ -439,6 +443,7 @@ footer { font-size: 13px; color: var(--muted); }
     $('copyBtn').dataset.text = copyText || '';
     $('copyArea').hidden = true;
     $('copyMsg').hidden = true;
+    $('shotImg').hidden = true;
     $('doneBox').hidden = false;
   }
 
@@ -543,6 +548,163 @@ footer { font-size: 13px; color: var(--muted); }
     if (hiddenAt && Date.now() - hiddenAt > 30000 && $('confirmBox').hidden && $('undoBox').hidden) reloadNow();
   });
 
+  /* ---------- 이미지 저장 (카톡 공유용) ---------- */
+  var IMG = {
+    bg: '#eef1ee', surface: '#ffffff', ink: '#16201b', muted: '#5b6a62', line: '#d7ded9',
+    accent: '#1d6a50', accentInk: '#ffffff', next: '#9a6110', nextSoft: '#f6ead6',
+    font: '"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif'
+  };
+
+  function drawShot() {
+    var W = 1080, P = 60, IW = W - P * 2;
+    var c = document.createElement('canvas');
+    c.width = W; c.height = 4200;
+    var g = c.getContext('2d');
+    function font(w, px) { g.font = w + ' ' + px + 'px ' + IMG.font; }
+    function text(t, x, y, w, px, color, align) {
+      font(w, px); g.fillStyle = color; g.textAlign = align || 'left'; g.textBaseline = 'alphabetic';
+      g.fillText(t, x, y);
+      return g.measureText(t).width;
+    }
+    function box(x, y, w, h, r, fill, stroke, lw) {
+      g.beginPath();
+      g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+      g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+      if (fill) { g.fillStyle = fill; g.fill(); }
+      if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw || 2; g.stroke(); }
+    }
+    function pill(t, x, yMid, px, bg, fg) {
+      font('700', px);
+      var w = g.measureText(t).width + px * 1.1;
+      box(x, yMid - px * 0.8, w, px * 1.6, px * 0.8, bg);
+      text(t, x + w / 2, yMid + px * 0.36, '700', px, fg, 'center');
+      return w;
+    }
+    function nameWithTitle(full, x, y, px, tpx) {
+      var p = splitName(full);
+      var w = text(p.name, x, y, '700', px, IMG.ink);
+      if (p.title) w += 10 + text(p.title, x + w + 10, y, '500', tpx, IMG.muted);
+      return w;
+    }
+
+    var now = when(Date.now());
+    g.fillStyle = IMG.bg; g.fillRect(0, 0, W, c.height);
+    var y = P + 30;
+    text(DATA.team, P, y, '700', 30, IMG.accent);
+    y += 70;
+    text('워킹순번표', P, y, '700', 60, IMG.ink);
+    text(now.dayLabel + ' ' + now.time + ' 기준', W - P, y, '500', 30, IMG.muted, 'right');
+
+    // 지금 차례 카드
+    y += 40;
+    var cardH = 300;
+    box(P, y, IW, cardH, 32, IMG.surface, IMG.line, 2);
+    text('지금 워킹 받을 차례', P + 44, y + 70, '700', 30, IMG.muted);
+    nameWithTitle(s.current, P + 44, y + 170, 88, 44);
+    var lw = text('다음 순번', P + 44, y + 250, '500', 32, IMG.muted);
+    pill(s.next, P + 44 + lw + 20, y + 239, 32, IMG.nextSoft, IMG.next);
+    y += cardH + 56;
+
+    // 순번
+    text('순번', P, y, '700', 30, IMG.muted);
+    y += 24;
+    var nextIndex = (s.currentIndex + 1) % s.people.length;
+    s.people.forEach(function (p, i) {
+      var isCur = i === s.currentIndex, isNext = !isCur && i === nextIndex;
+      var rowH = 128;
+      box(P, y, IW, rowH, 26, IMG.surface, isCur ? IMG.accent : IMG.line, isCur ? 5 : 2);
+      g.beginPath(); g.arc(P + 64, y + rowH / 2, 30, 0, Math.PI * 2);
+      g.fillStyle = isCur ? IMG.accent : (isNext ? IMG.nextSoft : IMG.bg); g.fill();
+      text(String(i + 1), P + 64, y + rowH / 2 + 11, '700', 30, isCur ? IMG.accentInk : (isNext ? IMG.next : IMG.muted), 'center');
+      var nx = P + 120;
+      var nw = nameWithTitle(p.name, nx, y + 58, 40, 30);
+      if (isCur) pill('지금 차례', nx + nw + 16, y + 45, 24, IMG.accent, IMG.accentInk);
+      else if (isNext) pill('다음', nx + nw + 16, y + 45, 24, IMG.nextSoft, IMG.next);
+      text(p.lastLabel ? '최근 받음 ' + p.lastLabel : '아직 받은 기록 없음', nx, y + 100, '400', 27, IMG.muted);
+      text(String(p.today), W - P - 40, y + 64, '700', 46, IMG.ink, 'right');
+      text('오늘 · 누적 ' + p.total, W - P - 40, y + 102, '400', 24, IMG.muted, 'right');
+      y += rowH + 16;
+    });
+
+    // 오늘 기록
+    var todays = s.entries.filter(function (e) { return e.day === now.day; });
+    var skips = todays.filter(function (e) { return e.skipped; }).length;
+    y += 40;
+    text('오늘 받은 기록 · ' + (todays.length - skips) + '건' + (skips ? ' (건너뜀 ' + skips + ')' : ''), P, y, '700', 30, IMG.muted);
+    y += 24;
+    var shown = todays.slice(0, 14);
+    var lineH = 64;
+    var listH = Math.max(1, shown.length + (todays.length > shown.length ? 1 : 0)) * lineH + 24;
+    box(P, y, IW, listH, 26, IMG.surface, IMG.line, 2);
+    var ly = y + 12;
+    if (!shown.length) {
+      text('오늘은 아직 기록이 없습니다', P + 36, ly + 42, '400', 30, IMG.muted);
+    }
+    shown.forEach(function (e, i) {
+      if (i) { g.fillStyle = IMG.line; g.fillRect(P + 2, ly, IW - 4, 2); }
+      text(e.time, P + 36, ly + 43, '400', 30, IMG.muted);
+      var w = text(e.name, P + 150, ly + 43, '500', 32, e.skipped ? IMG.muted : IMG.ink);
+      if (e.skipped) pill('건너뜀(부재)', P + 150 + w + 16, ly + 32, 22, IMG.nextSoft, IMG.next);
+      ly += lineH;
+    });
+    if (todays.length > shown.length) text('외 ' + (todays.length - shown.length) + '건', P + 36, ly + 43, '400', 28, IMG.muted);
+    y += listH + 50;
+
+    if (DATA.link) { text('순번표 ' + DATA.link.replace(/^https:\/\//, ''), P, y, '400', 24, IMG.muted); y += 20; }
+    y += P - 20;
+
+    var out = document.createElement('canvas');
+    out.width = W; out.height = Math.ceil(y);
+    out.getContext('2d').drawImage(c, 0, 0);
+    return out;
+  }
+
+  function shotName() {
+    var n = when(Date.now());
+    return DATA.team.replace(/\s+/g, '') + '_워킹순번표_' + n.day.slice(5).replace('-', '') + '_' + n.time.replace(':', '') + '.png';
+  }
+
+  function showShotInline(blob, msg) {
+    showDone(msg, '', false);
+    var img = $('shotImg');
+    if (img.src) { try { URL.revokeObjectURL(img.src); } catch (e) { /* 무시 */ } }
+    img.src = URL.createObjectURL(blob);
+    img.hidden = false;
+  }
+
+  $('shotBtn').addEventListener('click', function () {
+    var btn = $('shotBtn');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = '만드는 중…';
+    var ready = (document.fonts && document.fonts.load)
+      ? Promise.all([document.fonts.load('700 40px "IBM Plex Sans KR"'), document.fonts.load('400 30px "IBM Plex Sans KR"'), document.fonts.load('500 30px "IBM Plex Sans KR"')]).catch(function () {})
+      : Promise.resolve();
+    ready.then(function () {
+      return new Promise(function (resolve, reject) {
+        drawShot().toBlob(function (b) { b ? resolve(b) : reject(new Error('blob')); }, 'image/png');
+      });
+    }).then(function (blob) {
+      if (!dl) {
+        showShotInline(blob, '아래 이미지를 길게 눌러 "이미지 저장" 하거나 바로 카톡으로 공유하세요.');
+        return;
+      }
+      return dl.save({ filename: shotName(), data: blob }).then(function () {
+        showDone('이미지를 저장했습니다. 카톡 단톡방에서 사진(갤러리) 또는 파일로 보내세요.', '', false);
+      }).catch(function (err) {
+        var code = err && err.code;
+        if (code === 'declined') return;
+        if (code === 'rate_limited') { showDone('저장 창이 이미 열려 있습니다. 잠시 후 다시 눌러 주세요.', '', true); return; }
+        showShotInline(blob, '여기서는 파일 저장이 안 됩니다. 아래 이미지를 길게 눌러 저장하거나 공유하세요.');
+      });
+    }).catch(function () {
+      showDone('이미지를 만들지 못했습니다. 다시 눌러 주세요.', '', true);
+    }).then(function () {
+      btn.disabled = false;
+      btn.textContent = '이미지 저장';
+    });
+  });
+
   /* ---------- 시작 ---------- */
   afterLoad();
   if (location.protocol === 'file:' && !window.claude) {
@@ -557,6 +719,7 @@ footer { font-size: 13px; color: var(--muted); }
           if (!a) setReadOnly();
           render();
         }).catch(function () { setReadOnly(); render(); });
+        window.claude.use('downloads').then(function (d) { dl = d; }).catch(function () { dl = null; });
       } else if (++tries < 50) {
         setTimeout(connect, 200);
       } else {
