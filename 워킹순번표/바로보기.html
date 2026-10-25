@@ -74,6 +74,8 @@ button:disabled { opacity: .55; cursor: default; }
 .eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .08em; color: var(--accent); }
 h1 { font-size: 26px; font-weight: 700; letter-spacing: -.01em; text-wrap: balance; }
 .today { font-size: 14px; color: var(--muted); }
+.topright { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.refresh { min-height: 40px; padding: 6px 14px; font-size: 14px; font-weight: 500; }
 .note { font-size: 13px; color: var(--next); background: var(--next-soft); border-radius: 10px; padding: 8px 12px; }
 
 .turn {
@@ -155,7 +157,10 @@ footer { font-size: 13px; color: var(--muted); }
       <p class="eyebrow" id="team">2본 2팀</p>
       <h1>워킹순번표</h1>
     </div>
-    <p class="today" id="today"></p>
+    <div class="topright">
+      <p class="today" id="today"></p>
+      <button id="refreshBtn" class="refresh">새로고침</button>
+    </div>
   </header>
   <p class="note" id="note" hidden></p>
   <section class="turn" aria-live="polite">
@@ -418,7 +423,7 @@ footer { font-size: 13px; color: var(--muted); }
     $('undoBtn').hidden = !canWrite || !s.entries.length || !$('undoBox').hidden;
     $('status').textContent = saving ? '저장 중…'
       : preview ? '미리보기: 저장되지 않습니다'
-      : '다른 직원이 체크하면 이 화면이 자동으로 새로고침됩니다';
+      : '다른 직원이 체크하면 자동으로 새로고침됩니다. 화면이 오래돼 보이면 위의 새로고침을 누르세요.';
   }
 
   function kakaoText(e) {
@@ -521,6 +526,21 @@ footer { font-size: 13px; color: var(--muted); }
     } else {
       fallback();
     }
+  });
+
+  /* ---------- 새로고침 ---------- */
+  function reloadNow() {
+    if (saving) return;
+    $('refreshBtn').disabled = true;
+    $('refreshBtn').textContent = '새로고침 중…';
+    location.reload();
+  }
+  $('refreshBtn').addEventListener('click', reloadNow);
+  // 폰 화면이 꺼졌다 켜지면(30초 이상) 최신 순번으로 다시 불러옵니다.
+  var hiddenAt = 0;
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+    if (hiddenAt && Date.now() - hiddenAt > 30000 && $('confirmBox').hidden && $('undoBox').hidden) reloadNow();
   });
 
   /* ---------- 시작 ---------- */
