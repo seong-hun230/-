@@ -13,6 +13,8 @@ const STAFF_SHEET = '순번';
 const LOG_SHEET = '기록';
 const MAX_ENTRIES = 60; // 화면에 보여줄 최근 기록 수
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+const TYPE_RECEIVED = '받음';
+const TYPE_SKIPPED = '건너뜀';
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
@@ -31,26 +33,12 @@ function getState() {
  * 그 사이 다른 직원이 먼저 체크했으면 기록하지 않고 최신 상태만 돌려줍니다.
  */
 function checkWalking(expectedName, expectedCount) {
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(10000)) throw new Error('사용자가 많습니다. 잠시 후 다시 눌러 주세요.');
-  try {
-    const before = buildState_();
-    if (before.current !== expectedName || before.count !== expectedCount) {
-      before.ok = false;
-      before.notice = '그 사이 다른 직원이 먼저 체크해서 순번이 바뀌었습니다. 최신 순번으로 다시 확인해 주세요.';
-      return before;
-    }
-    const now = new Date();
-    const e = entry_(now, expectedName);
-    logSheet_().appendRow([now, expectedName, e.dayLabel + ' ' + e.time]);
-    SpreadsheetApp.flush();
-    const after = buildState_();
-    after.ok = true;
-    after.checked = e;
-    return after;
-  } finally {
-    lock.releaseLock();
-  }
+  return record_(TYPE_RECEIVED, expectedName, expectedCount);
+}
+
+/** 부재 시 건너뛰기: 받은 건수에는 넣지 않고 순번만 다음 사람으로 넘깁니다. */
+function skipTurn(expectedName, expectedCount) {
+  return record_(TYPE_SKIPPED, expectedName, expectedCount);
 }
 
 /** 마지막 기록 1건 취소 (잘못 눌렀을 때) */
@@ -80,11 +68,34 @@ function undoLast(expectedCount) {
 
 /* ---------- 내부 함수 ---------- */
 
+function record_(type, expectedName, expectedCount) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('사용자가 많습니다. 잠시 후 다시 눌러 주세요.');
+  try {
+    const before = buildState_();
+    if (before.current !== expectedName || before.count !== expectedCount) {
+      before.ok = false;
+      before.notice = '그 사이 다른 직원이 먼저 체크해서 순번이 바뀌었습니다. 최신 순번으로 다시 확인해 주세요.';
+      return before;
+    }
+    const now = new Date();
+    const e = entry_(now, expectedName, type);
+    logSheet_().appendRow([now, expectedName, e.dayLabel + ' ' + e.time, type]);
+    SpreadsheetApp.flush();
+    const after = buildState_();
+    after.ok = true;
+    after.checked = e;
+    return after;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function buildState_() {
   const staffNames = getStaff_();
   const sh = logSheet_();
   const last = sh.getLastRow();
-  const rows = last > 1 ? sh.getRange(2, 1, last - 1, 2).getValues() : [];
+  const rows = last > 1 ? sh.getRange(2, 1, last - 1, 4).getValues() : [];
   const todayKey = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
 
   const all = [];
@@ -92,11 +103,11 @@ function buildState_() {
     const d = r[0] instanceof Date ? r[0] : new Date(r[0]);
     const name = String(r[1] || '').trim();
     if (!name || isNaN(d.getTime())) return;
-    all.push(entry_(d, name));
+    all.push(entry_(d, name, String(r[3] || '').trim() || TYPE_RECEIVED));
   });
 
   const staff = staffNames.map(function (name) {
-    const mine = all.filter(function (e) { return e.name === name; });
+    const mine = all.filter(function (e) { return e.name === name && e.type === TYPE_RECEIVED; });
     const lastOne = mine.length ? mine[mine.length - 1] : null;
     return {
       name: name,
@@ -130,9 +141,10 @@ function buildState_() {
   };
 }
 
-function entry_(d, name) {
+function entry_(d, name, type) {
   return {
     name: name,
+    type: type,
     ts: d.getTime(),
     day: Utilities.formatDate(d, TZ, 'yyyy-MM-dd'),
     dayLabel: dayLabel_(d),
@@ -169,11 +181,12 @@ function logSheet_() {
   let sh = ss.getSheetByName(LOG_SHEET);
   if (!sh) {
     sh = ss.insertSheet(LOG_SHEET);
-    sh.getRange(1, 1, 1, 3).setValues([['일시', '담당자', '표시']]);
+    sh.getRange(1, 1, 1, 4).setValues([['일시', '담당자', '표시', '구분']]);
     sh.setFrozenRows(1);
     sh.setColumnWidth(1, 170);
     sh.setColumnWidth(2, 140);
     sh.setColumnWidth(3, 160);
   }
+  if (!sh.getRange(1, 4).getValue()) sh.getRange(1, 4).setValue('구분');
   return sh;
 }

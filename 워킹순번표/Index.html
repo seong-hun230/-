@@ -125,6 +125,12 @@ h1 { font-size: 26px; font-weight: 700; letter-spacing: -.01em; text-wrap: balan
   font-weight: 700;
 }
 #checkBtn { font-size: 18px; min-height: 58px; }
+#skipBtn { color: var(--muted); font-size: 15px; }
+.tag-skip {
+  font-size: 12px; font-weight: 700; color: var(--next);
+  background: var(--next-soft); border-radius: 999px; padding: 1px 8px;
+}
+.day li.skipped span:not(.tag-skip) { color: var(--muted); }
 .confirm {
   border-top: 1px dashed var(--line);
   padding-top: 14px;
@@ -251,6 +257,7 @@ footer button { min-height: 40px; padding: 8px 14px; font-size: 14px; }
     <p class="who" id="curName">불러오는 중…</p>
     <p class="nextline">다음 순번 <strong id="nextName">-</strong></p>
     <button id="checkBtn" class="primary" disabled>워킹 받음 체크</button>
+    <button id="skipBtn" class="ghost" disabled>자리에 없음 · 이번 순번 건너뛰기</button>
     <div id="confirmBox" class="confirm" hidden>
       <p id="confirmText"></p>
       <div class="row">
@@ -346,11 +353,11 @@ footer button { min-height: 40px; padding: 8px 14px; font-size: 14px; }
   function demoState(log) {
     var all = log.map(function (r) {
       var s = seoulParts(r.ts);
-      return { name: r.name, ts: r.ts, day: s.day, dayLabel: s.dayLabel, time: s.time };
+      return { name: r.name, type: r.type || '받음', ts: r.ts, day: s.day, dayLabel: s.dayLabel, time: s.time };
     });
     var todayKey = seoulParts(Date.now()).day;
     var staff = DEFAULT_STAFF.map(function (name) {
-      var mine = all.filter(function (e) { return e.name === name; });
+      var mine = all.filter(function (e) { return e.name === name && e.type === '받음'; });
       var last = mine[mine.length - 1];
       return {
         name: name, total: mine.length,
@@ -374,24 +381,12 @@ footer button { min-height: 40px; padding: 8px 14px; font-size: 14px; }
   var api = hasGas ? {
     getState: function () { return gasCall('getState'); },
     check: function (name, count) { return gasCall('checkWalking', name, count); },
+    skip: function (name, count) { return gasCall('skipTurn', name, count); },
     undo: function (count) { return gasCall('undoLast', count); }
   } : {
     getState: function () { return Promise.resolve(demoState(demoStore.load())); },
-    check: function (name, count) {
-      var log = demoStore.load();
-      var before = demoState(log);
-      if (before.current !== name || before.count !== count) {
-        before.ok = false;
-        before.notice = '그 사이 다른 직원이 먼저 체크해서 순번이 바뀌었습니다. 최신 순번으로 다시 확인해 주세요.';
-        return Promise.resolve(before);
-      }
-      log.push({ name: name, ts: Date.now() });
-      demoStore.save(log);
-      var after = demoState(log);
-      after.ok = true;
-      after.checked = after.entries[0];
-      return Promise.resolve(after);
-    },
+    check: function (name, count) { return demoRecord('받음', name, count); },
+    skip: function (name, count) { return demoRecord('건너뜀', name, count); },
     undo: function (count) {
       var log = demoStore.load();
       var before = demoState(log);
@@ -408,6 +403,22 @@ footer button { min-height: 40px; padding: 8px 14px; font-size: 14px; }
       return Promise.resolve(after);
     }
   };
+
+  function demoRecord(type, name, count) {
+    var log = demoStore.load();
+    var before = demoState(log);
+    if (before.current !== name || before.count !== count) {
+      before.ok = false;
+      before.notice = '그 사이 다른 직원이 먼저 체크해서 순번이 바뀌었습니다. 최신 순번으로 다시 확인해 주세요.';
+      return Promise.resolve(before);
+    }
+    log.push({ name: name, type: type, ts: Date.now() });
+    demoStore.save(log);
+    var after = demoState(log);
+    after.ok = true;
+    after.checked = after.entries[0];
+    return Promise.resolve(after);
+  }
 
   /* ---------- 화면 ---------- */
   var $ = function (id) { return document.getElementById(id); };
@@ -443,6 +454,7 @@ footer button { min-height: 40px; padding: 8px 14px; font-size: 14px; }
     $('curName').replaceChildren(nameNode(s.current));
     $('nextName').textContent = s.next;
     $('checkBtn').disabled = busy;
+    $('skipBtn').disabled = busy || s.staff.length < 2;
     $('checkBtn').textContent = splitName(s.current).name + ' ' + splitName(s.current).title + ' 워킹 받음 체크';
 
     var nextIndex = (s.currentIndex + 1) % s.staff.length;
@@ -480,13 +492,16 @@ footer button { min-height: 40px; padding: 8px 14px; font-size: 14px; }
       groups.forEach(function (g) {
         var box = el('div', 'day');
         var head = el('div', 'dayhead', g.label);
-        head.appendChild(el('span', null, g.items.length + '건'));
+        var skips = g.items.filter(function (e) { return e.type === '건너뜀'; }).length;
+        head.appendChild(el('span', null, (g.items.length - skips) + '건' + (skips ? ' · 건너뜀 ' + skips : '')));
         box.appendChild(head);
         var ul = el('ul');
         g.items.forEach(function (e) {
-          var li = el('li');
+          var skipped = e.type === '건너뜀';
+          var li = el('li', skipped ? 'skipped' : null);
           li.appendChild(el('time', null, e.time));
           li.appendChild(el('span', null, e.name));
+          if (skipped) li.appendChild(el('span', 'tag-skip', '건너뜀(부재)'));
           ul.appendChild(li);
         });
         box.appendChild(ul);
@@ -497,10 +512,12 @@ footer button { min-height: 40px; padding: 8px 14px; font-size: 14px; }
     $('status').textContent = (hasGas ? '자동 새로고침 중 · ' : '미리보기 · ') + '마지막 확인 ' + s.serverTime;
   }
 
+  function what(e) { return e.type === '건너뜀' ? '부재로 순번 건너뜀' : '워킹 받음'; }
+
   function kakaoText(e, s) {
     var lines = [
       '[' + s.team + ' 워킹]',
-      e.dayLabel + ' ' + e.time + ' ' + e.name + ' 워킹 받음',
+      e.dayLabel + ' ' + e.time + ' ' + e.name + ' ' + what(e),
       '▶ 다음 순번: ' + s.current
     ];
     if (s.appUrl) lines.push('순번표: ' + s.appUrl);
@@ -523,14 +540,14 @@ footer button { min-height: 40px; padding: 8px 14px; font-size: 14px; }
       showDone(s.notice, '', true);
     } else if (s.checked) {
       showDone(
-        s.checked.name + ' · ' + s.checked.dayLabel + ' ' + s.checked.time + ' 워킹 받음 체크 완료\n다음 순번은 ' + s.current + '입니다.',
+        s.checked.name + ' · ' + s.checked.dayLabel + ' ' + s.checked.time + ' ' + what(s.checked) + (s.checked.type === '건너뜀' ? ' 처리 완료' : ' 체크 완료') + '\n다음 순번은 ' + s.current + '입니다.',
         kakaoText(s.checked, s)
       );
     } else if (s.undone) {
-      showDone('마지막 기록(' + s.undone.dayLabel + ' ' + s.undone.time + ' ' + s.undone.name + ')을 취소했습니다.\n지금 차례는 ' + s.current + '입니다.', '', true);
+      showDone('마지막 기록(' + s.undone.dayLabel + ' ' + s.undone.time + ' ' + s.undone.name + ' ' + what(s.undone) + ')을 취소했습니다.\n지금 차례는 ' + s.current + '입니다.', '', true);
     } else if (prevCount != null && s.count > prevCount && s.entries[0]) {
       var e = s.entries[0];
-      showDone('새 기록: ' + e.dayLabel + ' ' + e.time + ' ' + e.name + ' 워킹 받음\n다음 순번은 ' + s.current + '입니다.', kakaoText(e, s));
+      showDone('새 기록: ' + e.dayLabel + ' ' + e.time + ' ' + e.name + ' ' + what(e) + '\n다음 순번은 ' + s.current + '입니다.', kakaoText(e, s));
     }
     render(s);
   }
@@ -549,24 +566,33 @@ footer button { min-height: 40px; padding: 8px 14px; font-size: 14px; }
     api.getState().then(function (s) { apply(s, prev); }).catch(fail);
   }
 
-  /* 체크 */
-  $('checkBtn').addEventListener('click', function () {
+  /* 체크 / 건너뛰기 */
+  var mode = 'check';
+  function openConfirm(m) {
     if (!state) return;
-    $('confirmText').textContent = state.current + '님이 워킹을 받은 것으로 체크할까요?';
+    mode = m;
+    $('confirmText').textContent = m === 'skip'
+      ? state.current + '님이 자리에 없어 이번 순번을 건너뛸까요? ' + state.next + ' 차례로 넘어갑니다.'
+      : state.current + '님이 워킹을 받은 것으로 체크할까요?';
+    $('confirmYes').textContent = m === 'skip' ? '네, 건너뜁니다' : '네, 체크합니다';
     $('confirmBox').hidden = false;
     $('checkBtn').hidden = true;
+    $('skipBtn').hidden = true;
     $('confirmYes').focus();
-  });
+  }
+  $('checkBtn').addEventListener('click', function () { openConfirm('check'); });
+  $('skipBtn').addEventListener('click', function () { openConfirm('skip'); });
   $('confirmNo').addEventListener('click', closeConfirm);
   function closeConfirm() {
     $('confirmBox').hidden = true;
     $('checkBtn').hidden = false;
+    $('skipBtn').hidden = false;
   }
   $('confirmYes').addEventListener('click', function () {
     if (!state || busy) return;
     busy = true;
     $('confirmYes').disabled = true;
-    api.check(state.current, state.count).then(function (s) {
+    api[mode](state.current, state.count).then(function (s) {
       busy = false;
       $('confirmYes').disabled = false;
       closeConfirm();
@@ -579,7 +605,7 @@ footer button { min-height: 40px; padding: 8px 14px; font-size: 14px; }
   $('undoBtn').addEventListener('click', function () {
     if (!state || !state.entries.length) return;
     var e = state.entries[0];
-    $('undoText').textContent = e.dayLabel + ' ' + e.time + ' ' + e.name + ' 기록을 취소할까요? 순번이 한 칸 되돌아갑니다.';
+    $('undoText').textContent = e.dayLabel + ' ' + e.time + ' ' + e.name + ' ' + what(e) + ' 기록을 취소할까요? 순번이 한 칸 되돌아갑니다.';
     $('undoBox').hidden = false;
     $('undoBtn').hidden = true;
   });
