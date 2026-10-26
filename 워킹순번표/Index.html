@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>2본 2팀 워킹순번표</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* 레이아웃: 한 손 폰 화면용 단일 컬럼. 맨 위 '지금 차례' 카드 → 순번 → 받은 기록 */
+:root {
+  --bg: #eef1ee;
+  --surface: #ffffff;
+  --ink: #16201b;
+  --muted: #5b6a62;
+  --line: #d7ded9;
+  --accent: #1d6a50;
+  --accent-soft: #e1efe8;
+  --accent-ink: #ffffff;
+  --next: #9a6110;
+  --next-soft: #f6ead6;
+  --danger: #b0402c;
+  --font: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1412;
+    --surface: #18201c;
+    --ink: #e6ede8;
+    --muted: #97a69d;
+    --line: #2a3530;
+    --accent: #46b388;
+    --accent-soft: #1b3229;
+    --accent-ink: #08130e;
+    --next: #e2a64a;
+    --next-soft: #33281a;
+    --danger: #e57560;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.wrap {
+  max-width: 520px;
+  margin: 0 auto;
+  padding-top: max(20px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(32px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+h1, h2, p { margin: 0; }
+button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 12px 16px;
+  min-height: 48px;
+}
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: .55; cursor: default; }
+.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+.ghost { background: transparent; }
+.danger-text { color: var(--danger); }
+
+/* 머리말 */
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .08em; color: var(--accent); }
+h1 { font-size: 26px; font-weight: 700; letter-spacing: -.01em; text-wrap: balance; }
+.today { font-size: 14px; color: var(--muted); }
+.demo {
+  font-size: 13px;
+  color: var(--next);
+  background: var(--next-soft);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+/* 지금 차례 */
+.turn {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.label { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+.who { font-size: 34px; font-weight: 700; line-height: 1.2; letter-spacing: -.02em; }
+.who small { font-size: 20px; font-weight: 500; color: var(--muted); margin-left: 4px; }
+.nextline {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 15px; color: var(--muted);
+}
+.nextline strong {
+  color: var(--next);
+  background: var(--next-soft);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-weight: 700;
+}
+#checkBtn { font-size: 18px; min-height: 58px; }
+#skipBtn { color: var(--muted); font-size: 15px; }
+.tag-skip {
+  font-size: 12px; font-weight: 700; color: var(--next);
+  background: var(--next-soft); border-radius: 999px; padding: 1px 8px;
+}
+.day li.skipped span:not(.tag-skip) { color: var(--muted); }
+.confirm {
+  border-top: 1px dashed var(--line);
+  padding-top: 14px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.confirm p { font-weight: 500; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.row button { flex: 1 1 140px; }
+
+/* 체크 결과 알림 */
+.done {
+  background: var(--accent-soft);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.done.warn { background: var(--next-soft); }
+.done p { white-space: pre-line; font-weight: 500; }
+.done textarea {
+  width: 100%;
+  min-height: 96px;
+  font: inherit;
+  font-size: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  resize: vertical;
+}
+.copymsg { font-size: 13px; color: var(--muted); }
+
+/* 섹션 */
+.block { display: flex; flex-direction: column; gap: 10px; }
+h2 { font-size: 15px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+
+/* 순번 목록 */
+.order { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.person {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+.person.is-current { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.num {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-weight: 700; font-size: 15px;
+  background: var(--bg); color: var(--muted);
+}
+.is-current .num { background: var(--accent); color: var(--accent-ink); }
+.is-next .num { background: var(--next-soft); color: var(--next); }
+.pbody { min-width: 0; display: flex; flex-direction: column; }
+.pname { font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pname small { font-weight: 500; color: var(--muted); font-size: 14px; }
+.chip { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 1px 8px; }
+.chip.now { background: var(--accent); color: var(--accent-ink); }
+.chip.nx { background: var(--next-soft); color: var(--next); }
+.plast { font-size: 13px; color: var(--muted); }
+.pcount { text-align: right; font-size: 12px; color: var(--muted); line-height: 1.3; }
+.pcount b { display: block; font-size: 20px; color: var(--ink); }
+
+/* 기록 */
+.logs { display: flex; flex-direction: column; gap: 12px; }
+.day {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.dayhead {
+  display: flex; justify-content: space-between; gap: 8px;
+  padding: 10px 14px;
+  font-size: 14px; font-weight: 700;
+  border-bottom: 1px solid var(--line);
+}
+.dayhead span { color: var(--muted); font-weight: 500; }
+.day ul { list-style: none; margin: 0; padding: 0; }
+.day li {
+  display: flex; gap: 14px; align-items: baseline;
+  padding: 9px 14px;
+  border-top: 1px solid var(--line);
+  font-size: 15px;
+}
+.day li:first-child { border-top: 0; }
+.day time { color: var(--muted); font-size: 14px; min-width: 44px; }
+.empty {
+  color: var(--muted); font-size: 14px;
+  border: 1px dashed var(--line); border-radius: 14px; padding: 16px;
+}
+.undo { display: flex; flex-direction: column; gap: 10px; }
+.undo .confirm { border-top: 0; padding-top: 0; }
+
+footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+  font-size: 13px; color: var(--muted);
+}
+footer button { min-height: 40px; padding: 8px 14px; font-size: 14px; }
+@media (prefers-reduced-motion: no-preference) {
+  .done { animation: pop .25s ease-out; }
+  @keyframes pop { from { transform: translateY(-4px); opacity: .6; } to { transform: none; opacity: 1; } }
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow" id="team">2본 2팀</p>
+      <h1>워킹순번표</h1>
+    </div>
+    <p class="today" id="today"></p>
+  </header>
+
+  <p class="demo" id="demo" hidden>미리보기 모드입니다. 지금은 이 기기에만 저장됩니다. 구글 시트에 설치하면 직원 모두가 같은 순번표를 봅니다.</p>
+
+  <section class="turn" aria-live="polite">
+    <p class="label">지금 워킹 받을 차례</p>
+    <p class="who" id="curName">불러오는 중…</p>
+    <p class="nextline">다음 순번 <strong id="nextName">-</strong></p>
+    <button id="checkBtn" class="primary" disabled>워킹 받음 체크</button>
+    <button id="skipBtn" class="ghost" disabled>자리에 없음 · 이번 순번 건너뛰기</button>
+    <div id="confirmBox" class="confirm" hidden>
+      <p id="confirmText"></p>
+      <div class="row">
+        <button id="confirmYes" class="primary">네, 체크합니다</button>
+        <button id="confirmNo" class="ghost">취소</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="doneBox" class="done" hidden aria-live="polite">
+    <p id="doneText"></p>
+    <button id="copyBtn">카톡 알림 문구 복사</button>
+    <textarea id="copyArea" readonly hidden aria-label="카톡에 붙여넣을 문구"></textarea>
+    <p class="copymsg" id="copyMsg" hidden></p>
+  </section>
+
+  <section class="block">
+    <h2>순번</h2>
+    <ol class="order" id="orderList"></ol>
+  </section>
+
+  <section class="block">
+    <h2>받은 기록</h2>
+    <div class="logs" id="logList"></div>
+    <div class="undo">
+      <button id="undoBtn" class="ghost danger-text" hidden>마지막 기록 취소 (잘못 눌렀을 때)</button>
+      <div id="undoBox" class="confirm" hidden>
+        <p id="undoText"></p>
+        <div class="row">
+          <button id="undoYes" class="primary">네, 취소합니다</button>
+          <button id="undoNo" class="ghost">아니요</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span id="status">불러오는 중…</span>
+    <button id="refreshBtn">새로고침</button>
+  </footer>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var POLL_MS = 30000;
+  var TEAM = '2본 2팀';
+  var DEFAULT_STAFF = ['홍명숙 실장', '김기엽 부장', '서정주 부장'];
+
+  /* ---------- 서버 연결 (구글 시트) / 미리보기(이 기기 저장) ---------- */
+  var hasGas = typeof google !== 'undefined' && google.script && google.script.run;
+
+  function gasCall(fn) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return new Promise(function (resolve, reject) {
+      var r = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
+      r[fn].apply(r, args);
+    });
+  }
+
+  var demoStore = (function () {
+    var KEY = 'walking-demo-log';
+    var mem = [];
+    function load() {
+      try { var v = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(v) ? v : []; }
+      catch (e) { return mem; }
+    }
+    function save(list) {
+      mem = list;
+      try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) { /* 저장 불가 시 메모리에만 */ }
+    }
+    return { load: load, save: save };
+  })();
+
+  var WEEK = ['일', '월', '화', '수', '목', '금', '토'];
+  function seoulParts(ts) {
+    var fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Seoul', year: 'numeric', month: 'numeric', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23', weekday: 'short'
+    });
+    var p = {};
+    fmt.formatToParts(new Date(ts)).forEach(function (x) { p[x.type] = x.value; });
+    var wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(p.weekday);
+    return {
+      day: p.year + '-' + pad(p.month) + '-' + pad(p.day),
+      dayLabel: Number(p.month) + '월 ' + Number(p.day) + '일(' + WEEK[wd] + ')',
+      time: pad(p.hour) + ':' + pad(p.minute)
+    };
+  }
+  function pad(v) { return ('0' + v).slice(-2); }
+
+  function demoState(log) {
+    var all = log.map(function (r) {
+      var s = seoulParts(r.ts);
+      return { name: r.name, type: r.type || '받음', ts: r.ts, day: s.day, dayLabel: s.dayLabel, time: s.time };
+    });
+    var todayKey = seoulParts(Date.now()).day;
+    var staff = DEFAULT_STAFF.map(function (name) {
+      var mine = all.filter(function (e) { return e.name === name && e.type === '받음'; });
+      var last = mine[mine.length - 1];
+      return {
+        name: name, total: mine.length,
+        today: mine.filter(function (e) { return e.day === todayKey; }).length,
+        lastLabel: last ? last.dayLabel + ' ' + last.time : ''
+      };
+    });
+    var ci = 0;
+    if (all.length) {
+      var idx = DEFAULT_STAFF.indexOf(all[all.length - 1].name);
+      ci = idx === -1 ? 0 : (idx + 1) % DEFAULT_STAFF.length;
+    }
+    return {
+      team: TEAM, staff: staff, currentIndex: ci,
+      current: DEFAULT_STAFF[ci], next: DEFAULT_STAFF[(ci + 1) % DEFAULT_STAFF.length],
+      count: log.length, todayLabel: seoulParts(Date.now()).dayLabel,
+      entries: all.slice(-60).reverse(), appUrl: '', serverTime: seoulParts(Date.now()).time
+    };
+  }
+
+  var api = hasGas ? {
+    getState: function () { return gasCall('getState'); },
+    check: function (name, count) { return gasCall('checkWalking', name, count); },
+    skip: function (name, count) { return gasCall('skipTurn', name, count); },
+    undo: function (count) { return gasCall('undoLast', count); }
+  } : {
+    getState: function () { return Promise.resolve(demoState(demoStore.load())); },
+    check: function (name, count) { return demoRecord('받음', name, count); },
+    skip: function (name, count) { return demoRecord('건너뜀', name, count); },
+    undo: function (count) {
+      var log = demoStore.load();
+      var before = demoState(log);
+      if (before.count !== count || !log.length) {
+        before.ok = false;
+        before.notice = log.length ? '그 사이 새 기록이 생겨서 취소하지 않았습니다.' : '취소할 기록이 없습니다.';
+        return Promise.resolve(before);
+      }
+      log.pop();
+      demoStore.save(log);
+      var after = demoState(log);
+      after.ok = true;
+      after.undone = before.entries[0];
+      return Promise.resolve(after);
+    }
+  };
+
+  function demoRecord(type, name, count) {
+    var log = demoStore.load();
+    var before = demoState(log);
+    if (before.current !== name || before.count !== count) {
+      before.ok = false;
+      before.notice = '그 사이 다른 직원이 먼저 체크해서 순번이 바뀌었습니다. 최신 순번으로 다시 확인해 주세요.';
+      return Promise.resolve(before);
+    }
+    log.push({ name: name, type: type, ts: Date.now() });
+    demoStore.save(log);
+    var after = demoState(log);
+    after.ok = true;
+    after.checked = after.entries[0];
+    return Promise.resolve(after);
+  }
+
+  /* ---------- 화면 ---------- */
+  var $ = function (id) { return document.getElementById(id); };
+  var state = null;
+  var busy = false;
+
+  function splitName(full) {
+    var i = full.lastIndexOf(' ');
+    return i > 0 ? { name: full.slice(0, i), title: full.slice(i + 1) } : { name: full, title: '' };
+  }
+  function nameNode(full) {
+    var s = splitName(full);
+    var frag = document.createDocumentFragment();
+    frag.appendChild(document.createTextNode(s.name));
+    if (s.title) {
+      var sm = document.createElement('small');
+      sm.textContent = s.title;
+      frag.appendChild(sm);
+    }
+    return frag;
+  }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function render(s) {
+    state = s;
+    $('team').textContent = s.team;
+    $('today').textContent = '오늘 ' + s.todayLabel;
+    $('curName').replaceChildren(nameNode(s.current));
+    $('nextName').textContent = s.next;
+    $('checkBtn').disabled = busy;
+    $('skipBtn').disabled = busy || s.staff.length < 2;
+    $('checkBtn').textContent = splitName(s.current).name + ' ' + splitName(s.current).title + ' 워킹 받음 체크';
+
+    var nextIndex = (s.currentIndex + 1) % s.staff.length;
+    var ol = $('orderList');
+    ol.replaceChildren();
+    s.staff.forEach(function (p, i) {
+      var li = el('li', 'person' + (i === s.currentIndex ? ' is-current' : '') + (i === nextIndex && s.staff.length > 1 ? ' is-next' : ''));
+      li.appendChild(el('span', 'num', String(i + 1)));
+      var body = el('div', 'pbody');
+      var nm = el('span', 'pname');
+      nm.appendChild(nameNode(p.name));
+      if (i === s.currentIndex) nm.appendChild(el('span', 'chip now', '지금 차례'));
+      else if (i === nextIndex) nm.appendChild(el('span', 'chip nx', '다음'));
+      body.appendChild(nm);
+      body.appendChild(el('span', 'plast', p.lastLabel ? '최근 받음 ' + p.lastLabel : '아직 받은 기록 없음'));
+      li.appendChild(body);
+      var cnt = el('div', 'pcount');
+      cnt.appendChild(el('b', null, String(p.today)));
+      cnt.appendChild(document.createTextNode('오늘 · 누적 ' + p.total));
+      li.appendChild(cnt);
+      ol.appendChild(li);
+    });
+
+    var logs = $('logList');
+    logs.replaceChildren();
+    if (!s.entries.length) {
+      logs.appendChild(el('p', 'empty', '아직 기록이 없습니다. 첫 손님이 오면 위의 체크 버튼을 눌러 주세요.'));
+    } else {
+      var groups = [];
+      s.entries.forEach(function (e) {
+        var g = groups[groups.length - 1];
+        if (!g || g.day !== e.day) { g = { day: e.day, label: e.dayLabel, items: [] }; groups.push(g); }
+        g.items.push(e);
+      });
+      groups.forEach(function (g) {
+        var box = el('div', 'day');
+        var head = el('div', 'dayhead', g.label);
+        var skips = g.items.filter(function (e) { return e.type === '건너뜀'; }).length;
+        head.appendChild(el('span', null, (g.items.length - skips) + '건' + (skips ? ' · 건너뜀 ' + skips : '')));
+        box.appendChild(head);
+        var ul = el('ul');
+        g.items.forEach(function (e) {
+          var skipped = e.type === '건너뜀';
+          var li = el('li', skipped ? 'skipped' : null);
+          li.appendChild(el('time', null, e.time));
+          li.appendChild(el('span', null, e.name));
+          if (skipped) li.appendChild(el('span', 'tag-skip', '건너뜀(부재)'));
+          ul.appendChild(li);
+        });
+        box.appendChild(ul);
+        logs.appendChild(box);
+      });
+    }
+    $('undoBtn').hidden = !s.entries.length || !$('undoBox').hidden;
+    $('status').textContent = (hasGas ? '자동 새로고침 중 · ' : '미리보기 · ') + '마지막 확인 ' + s.serverTime;
+  }
+
+  function what(e) { return e.type === '건너뜀' ? '부재로 순번 건너뜀' : '워킹 받음'; }
+
+  function kakaoText(e, s) {
+    var lines = [
+      '[' + s.team + ' 워킹]',
+      e.dayLabel + ' ' + e.time + ' ' + e.name + ' ' + what(e),
+      '▶ 다음 순번: ' + s.current
+    ];
+    if (s.appUrl) lines.push('순번표: ' + s.appUrl);
+    return lines.join('\n');
+  }
+
+  function showDone(text, copyText, warn) {
+    var box = $('doneBox');
+    box.className = 'done' + (warn ? ' warn' : '');
+    $('doneText').textContent = text;
+    $('copyBtn').hidden = !copyText;
+    $('copyBtn').dataset.text = copyText || '';
+    $('copyArea').hidden = true;
+    $('copyMsg').hidden = true;
+    box.hidden = false;
+  }
+
+  function apply(s, prevCount) {
+    if (s.notice) {
+      showDone(s.notice, '', true);
+    } else if (s.checked) {
+      showDone(
+        s.checked.name + ' · ' + s.checked.dayLabel + ' ' + s.checked.time + ' ' + what(s.checked) + (s.checked.type === '건너뜀' ? ' 처리 완료' : ' 체크 완료') + '\n다음 순번은 ' + s.current + '입니다.',
+        kakaoText(s.checked, s)
+      );
+    } else if (s.undone) {
+      showDone('마지막 기록(' + s.undone.dayLabel + ' ' + s.undone.time + ' ' + s.undone.name + ' ' + what(s.undone) + ')을 취소했습니다.\n지금 차례는 ' + s.current + '입니다.', '', true);
+    } else if (prevCount != null && s.count > prevCount && s.entries[0]) {
+      var e = s.entries[0];
+      showDone('새 기록: ' + e.dayLabel + ' ' + e.time + ' ' + e.name + ' ' + what(e) + '\n다음 순번은 ' + s.current + '입니다.', kakaoText(e, s));
+    }
+    render(s);
+  }
+
+  function fail(err) {
+    busy = false;
+    var msg = (err && err.message) ? err.message : String(err || '');
+    showDone('연결에 실패했습니다. 인터넷 연결을 확인하고 새로고침을 눌러 주세요.' + (msg ? '\n(' + msg + ')' : ''), '', true);
+    $('status').textContent = '연결 실패';
+    if (state) render(state);
+  }
+
+  function refresh() {
+    if (busy) return;
+    var prev = state ? state.count : null;
+    api.getState().then(function (s) { apply(s, prev); }).catch(fail);
+  }
+
+  /* 체크 / 건너뛰기 */
+  var mode = 'check';
+  function openConfirm(m) {
+    if (!state) return;
+    mode = m;
+    $('confirmText').textContent = m === 'skip'
+      ? state.current + '님이 자리에 없어 이번 순번을 건너뛸까요? ' + state.next + ' 차례로 넘어갑니다.'
+      : state.current + '님이 워킹을 받은 것으로 체크할까요?';
+    $('confirmYes').textContent = m === 'skip' ? '네, 건너뜁니다' : '네, 체크합니다';
+    $('confirmBox').hidden = false;
+    $('checkBtn').hidden = true;
+    $('skipBtn').hidden = true;
+    $('confirmYes').focus();
+  }
+  $('checkBtn').addEventListener('click', function () { openConfirm('check'); });
+  $('skipBtn').addEventListener('click', function () { openConfirm('skip'); });
+  $('confirmNo').addEventListener('click', closeConfirm);
+  function closeConfirm() {
+    $('confirmBox').hidden = true;
+    $('checkBtn').hidden = false;
+    $('skipBtn').hidden = false;
+  }
+  $('confirmYes').addEventListener('click', function () {
+    if (!state || busy) return;
+    busy = true;
+    $('confirmYes').disabled = true;
+    api[mode](state.current, state.count).then(function (s) {
+      busy = false;
+      $('confirmYes').disabled = false;
+      closeConfirm();
+      apply(s, null);
+      $('doneBox').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }).catch(function (e) { $('confirmYes').disabled = false; closeConfirm(); fail(e); });
+  });
+
+  /* 취소 */
+  $('undoBtn').addEventListener('click', function () {
+    if (!state || !state.entries.length) return;
+    var e = state.entries[0];
+    $('undoText').textContent = e.dayLabel + ' ' + e.time + ' ' + e.name + ' ' + what(e) + ' 기록을 취소할까요? 순번이 한 칸 되돌아갑니다.';
+    $('undoBox').hidden = false;
+    $('undoBtn').hidden = true;
+  });
+  $('undoNo').addEventListener('click', function () {
+    $('undoBox').hidden = true;
+    $('undoBtn').hidden = !(state && state.entries.length);
+  });
+  $('undoYes').addEventListener('click', function () {
+    if (!state || busy) return;
+    busy = true;
+    $('undoYes').disabled = true;
+    api.undo(state.count).then(function (s) {
+      busy = false;
+      $('undoYes').disabled = false;
+      $('undoBox').hidden = true;
+      apply(s, null);
+    }).catch(function (e) { $('undoYes').disabled = false; $('undoBox').hidden = true; fail(e); });
+  });
+
+  /* 카톡 문구 복사 */
+  $('copyBtn').addEventListener('click', function () {
+    var text = $('copyBtn').dataset.text || '';
+    var area = $('copyArea');
+    var msg = $('copyMsg');
+    function fallback() {
+      area.value = text;
+      area.hidden = false;
+      area.focus();
+      area.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      msg.textContent = ok
+        ? '복사했습니다. 카톡 단톡방에 붙여넣기 하세요.'
+        : '아래 글자를 길게 눌러 전체 선택 → 복사한 뒤 카톡에 붙여넣기 하세요.';
+      msg.hidden = false;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        msg.textContent = '복사했습니다. 카톡 단톡방에 붙여넣기 하세요.';
+        msg.hidden = false;
+        area.hidden = true;
+      }).catch(fallback);
+    } else {
+      fallback();
+    }
+  });
+
+  $('refreshBtn').addEventListener('click', refresh);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') refresh();
+  });
+  setInterval(function () {
+    if (document.visibilityState === 'visible') refresh();
+  }, POLL_MS);
+
+  $('demo').hidden = !!hasGas;
+  refresh();
+})();
+</script>
+</body>
+</html>
