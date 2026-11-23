@@ -79,7 +79,7 @@ if ($py -and (Test-Path $py)) {
     if (-not (Test-Path (Join-Path $venv 'Scripts\python.exe'))) { & $py -m venv $venv }
     $vpy = Join-Path $venv 'Scripts\python.exe'
     & $vpy -m pip install --upgrade pip
-    & $vpy -m pip install --upgrade faster-whisper whisper-ctranslate2 'scenedetect[opencv]'
+    & $vpy -m pip install --upgrade faster-whisper whisper-ctranslate2 scenedetect opencv-python 'av<19'
     Add-UserPath (Join-Path $venv 'Scripts')
 } else {
     Write-Host 'Python을 찾지 못해 faster-whisper / PySceneDetect 설치를 건너뜁니다. PC를 재시작한 뒤 이 파일을 다시 실행하세요.' -ForegroundColor Yellow
