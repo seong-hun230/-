@@ -1,0 +1,14 @@
+{
+  "phone": "1666-0992",
+  "label": "상담/방문예약",
+  "banners": [
+    {"name": "banner_01_특별할인공급", "style": "photo", "eyebrow": "대전 씨엘리오 스위첸",
+     "title": "*특별할인공급* 진행 중", "sub": "용문역 도보 3분 · 준공 완료 신축", "cta_hint": "터치하면 바로 연결"},
+    {"name": "banner_02_59타입", "style": "navy", "eyebrow": "59㎡ 오피스텔 · 방 2개 구조",
+     "title": "남은 호실과\n*특별할인 조건* 확인", "sub": "타입·층별 조건을 전화로 바로 안내해 드립니다"},
+    {"name": "banner_03_세제특례", "style": "navy", "eyebrow": "소형 신축주택 특례",
+     "title": "내 상황에도\n*적용될까?*", "sub": "적용 대상인지 상담으로 먼저 확인하세요"},
+    {"name": "banner_04_마무리", "style": "photo", "eyebrow": "대전 씨엘리오 스위첸 · 특별할인공급",
+     "big_number": true, "sub": "방문 위치는 예약하실 때 안내해 드립니다"}
+  ]
+}
